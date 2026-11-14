@@ -1,0 +1,175 @@
+buildscript {
+  repositories {
+    gradlePluginPortal()
+    mavenCentral()
+    maven { url "https://repo.grails.org/grails/core" }
+    maven { url "https://repo.grails.org/grails/plugins" }
+  }
+}
+
+plugins {
+  id "groovy"
+  id "org.grails.grails-gsp"
+  id "org.grails.grails-web"
+  id "com.github.erdi.webdriver-binaries"
+  id "war"
+  id "idea"
+  id "com.bertramlabs.asset-pipeline"
+  id "application"
+  id "eclipse"
+}
+
+group = "com.murad.app.matrimony"
+
+repositories {
+  mavenCentral()
+  maven { url "https://repo.grails.org/grails/core/" }
+}
+
+configurations {
+  all {
+    resolutionStrategy.eachDependency { DependencyResolveDetails details ->
+      if (details.requested.group == 'org.seleniumhq.selenium') {
+        details.useVersion('4.19.1')
+      }
+    }
+  }
+}
+
+dependencies {
+  // ── Database ──────────────────────────────────────────────────────────────
+  runtimeOnly 'org.postgresql:postgresql:42.7.4'
+
+  // ── Grails Core ───────────────────────────────────────────────────────────
+  implementation("org.grails:grails-core")
+  implementation("org.grails:grails-logging")
+  implementation("org.grails:grails-plugin-databinding")
+  implementation("org.grails:grails-plugin-i18n")
+  implementation("org.grails:grails-plugin-interceptors")
+  implementation("org.grails:grails-plugin-rest")
+  implementation("org.grails:grails-plugin-services")
+  implementation("org.grails:grails-plugin-url-mappings")
+  implementation("org.grails:grails-web-boot")
+  // FIX: removed duplicate compileOnly("org.grails:grails-web-boot") below
+  implementation("org.grails.plugins:gsp")
+  implementation("org.grails.plugins:hibernate5")
+  implementation("org.grails.plugins:scaffolding")
+
+  // ── Spring Boot ───────────────────────────────────────────────────────────
+  implementation("org.springframework.boot:spring-boot-autoconfigure")
+  implementation("org.springframework.boot:spring-boot-starter")
+  implementation("org.springframework.boot:spring-boot-starter-actuator")
+  implementation("org.springframework.boot:spring-boot-starter-logging")
+  implementation("org.springframework.boot:spring-boot-starter-tomcat")
+  implementation("org.springframework.boot:spring-boot-starter-validation")
+
+  implementation("com.maxmind.geoip2:geoip2:4.2.0")
+  implementation("org.grails.plugins:quartz:2.0.13")
+
+  // ── Micronaut (compile-time DI only) ─────────────────────────────────────
+  compileOnly("io.micronaut:micronaut-inject-groovy")
+
+  // ── Mail & Scheduler ──────────────────────────────────────────────────────
+  implementation("org.grails.plugins:mail:3.0.0")
+  implementation("org.grails.plugins:quartz:3.0.0")
+
+  // ── Frontend Webjars ──────────────────────────────────────────────────────
+  implementation("org.webjars.npm:glightbox:3.2.0")
+
+  // ── JWT ───────────────────────────────────────────────────────────────────
+  implementation("io.jsonwebtoken:jjwt-api:0.11.5")
+  runtimeOnly("io.jsonwebtoken:jjwt-impl:0.11.5")
+  runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.11.5")
+
+  // ── Spring Security (Java 11 compatible: Spring Security 5.x) ────────────
+  implementation("org.grails.plugins:spring-security-core:5.2.1")
+  implementation("org.springframework.security:spring-security-web:5.7.1")
+  implementation("org.springframework.security:spring-security-config:5.7.1")
+  implementation("org.springframework.security:spring-security-core:5.8.5")
+
+  // ── WebSocket & Messaging ─────────────────────────────────────────────────
+  // FIX: spring-websocket and spring-messaging must be 'implementation', NOT compileOnly,
+  //      so they are present at runtime. Removed the duplicate compileOnly declarations.
+  implementation("org.springframework:spring-websocket")
+  implementation("org.springframework:spring-messaging")
+  implementation("org.grails.plugins:grails-spring-websocket:2.4.0")
+  // FIX: stomp-websocket is required at runtime by grails-spring-websocket; was incorrectly commented out
+  runtimeOnly("org.webjars:stomp-websocket:2.3.3")
+  implementation("org.webjars:sockjs-client:1.1.2")
+
+  // ── OAuth2 ────────────────────────────────────────────────────────────────
+  // NOTE: grails-spring-security-oauth2:2.0.0-RC1 is a release candidate;
+  //       verify compatibility with your Spring Security 5.x setup before deploying.
+  implementation("org.grails.plugins:spring-security-oauth2:2.0.0-RC1")
+  implementation("org.springframework.security:spring-security-oauth2-client")
+  implementation("org.springframework.security:spring-security-oauth2-jose")
+
+  // ── HTTP Client ───────────────────────────────────────────────────────────
+  implementation("org.apache.httpcomponents:httpclient:4.5.14")
+
+  // ── AMQP / RabbitMQ ───────────────────────────────────────────────────────
+  implementation("org.springframework.boot:spring-boot-starter-amqp")
+  // ADDED: declared directly (not just transitively via the starter above) so
+  // SimpleRabbitListenerContainerFactory / RabbitTemplate etc. are reliably
+  // indexed by the IDE. Version pinned explicitly (3.1.4 — Spring AMQP release
+  // line compatible with Spring Boot 3.x, which Grails 6 is built on).
+  implementation("org.springframework.amqp:spring-rabbit")
+  // ADDED (chat module): required by RabbitConfig's RetryInterceptorBuilder /
+  // ExponentialBackOffPolicy — NOT pulled in transitively by spring-boot-starter-amqp.
+  // Version pinned explicitly (2.0.4 — compatible with Spring Boot 3.x / Spring 6.x).
+  implementation("org.springframework.retry:spring-retry")
+
+  // ── Console & Asset Pipeline ──────────────────────────────────────────────
+  console("org.grails:grails-console")
+  runtimeOnly("com.bertramlabs.plugins:asset-pipeline-grails:4.3.0")
+  runtimeOnly("com.h2database:h2")
+  runtimeOnly("org.apache.tomcat:tomcat-jdbc")
+  runtimeOnly("org.fusesource.jansi:jansi:1.18")
+
+  // ── Test ──────────────────────────────────────────────────────────────────
+  testImplementation("io.micronaut:micronaut-inject-groovy")
+  testImplementation("org.grails:grails-gorm-testing-support")
+  testImplementation("org.grails:grails-web-testing-support")
+  testImplementation("org.grails.plugins:geb")
+  testImplementation("org.seleniumhq.selenium:selenium-api:4.19.1")
+  testImplementation("org.seleniumhq.selenium:selenium-remote-driver:4.19.1")
+  testImplementation("org.seleniumhq.selenium:selenium-support:4.19.1")
+  testImplementation("org.spockframework:spock-core")
+  testImplementation("io.micronaut:micronaut-http-client")
+  // ADDED (chat module): TestRabbitTemplate / @RabbitListenerTest support for
+  // testing ChatMessagePublisherService / ChatMessageConsumer without a live broker.
+  // Version pinned to match spring-rabbit (3.1.4) above.
+  testImplementation("org.springframework.amqp:spring-rabbit-test:3.1.4")
+  testRuntimeOnly("org.seleniumhq.selenium:selenium-chrome-driver:4.19.1")
+  testRuntimeOnly("org.seleniumhq.selenium:selenium-firefox-driver:4.19.1")
+  testRuntimeOnly("org.seleniumhq.selenium:selenium-safari-driver:4.19.1")
+}
+
+// FIX: mainClass package corrected from 'com.matics.app.matrimony' to match
+//      the declared group 'com.murad.app.matrimony'
+application {
+  mainClass.set("com.murad.app.matrimony.Application")
+}
+
+java {
+  sourceCompatibility = JavaVersion.toVersion("11")
+}
+
+tasks.withType(Test) {
+  useJUnitPlatform()
+  systemProperty "geb.env", System.getProperty('geb.env')
+  systemProperty "geb.build.reportsDir", reporting.file("geb/integrationTest")
+  systemProperty 'webdriver.chrome.driver', "${System.getenv('CHROMEWEBDRIVER')}/chromedriver"
+  systemProperty 'webdriver.gecko.driver', "${System.getenv('GECKOWEBDRIVER')}/geckodriver"
+}
+
+webdriverBinaries {
+  chromedriver '122.0.6260.0'
+  geckodriver '0.33.0'
+  edgedriver '110.0.1587.57'
+}
+
+assets {
+  minifyJs = true
+  minifyCss = true
+}

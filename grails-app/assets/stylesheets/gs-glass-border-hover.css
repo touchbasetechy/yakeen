@@ -1,0 +1,136 @@
+/*
+ * Glass card: white border + blur + hover / mouse-exit transition.
+ * Subset of gs-slider-core.css (GlassSliderCommonTagLib).
+ * Apply the class to any element, e.g. <div class="glass-readonly-block">â€¦</div>.
+ */
+
+.glass-readonly-block {
+  /* white border (resting / hover / pressed) */
+  --gs-border: rgba(255, 255, 255, 0.20);
+  --gs-border-hover: rgba(255, 255, 255, 0.30);
+  --gs-border-active: rgba(255, 255, 255, 0.70);
+
+  /* glass fill (resting / hover / pressed) */
+  --gs-background: rgba(255, 255, 255, 0.10);
+  --gs-background-hover: rgba(255, 255, 255, 0.15);
+  --gs-background-active: rgba(255, 255, 255, 0.25);
+
+  /* shadows (resting / hover / pressed) */
+  --gs-shadow: rgba(0, 0, 0, 0.10);
+  --gs-shadow-hover: rgba(0, 0, 0, 0.20);
+  --gs-shadow-active: rgba(255, 255, 255, 0.10);
+  --gs-shadow-active-inset: rgba(255, 255, 255, 0.30);
+
+  --gs-radius: 20px;
+
+  border-radius: var(--gs-radius);
+  background: var(--gs-background);
+  border: 1px solid var(--gs-border);
+  /*box-shadow: 0 8px 32px var(--gs-shadow);*/
+
+  /* blur */
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+
+  /* the same transition animates both mouse-enter and mouse-exit */
+  transition: background 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease, transform 0.4s ease;
+  isolation: isolate;
+}
+
+/* mouse hover */
+.glass-readonly-block:hover {
+  background: var(--gs-background-hover);
+  border-color: var(--gs-border-hover);
+  /*box-shadow: 0 12px 40px var(--gs-shadow-hover);*/
+}
+
+/* pressed / active: brighter white border while a thumb is being dragged.
+   Declared twice on purpose: a selector list containing an unsupported
+   :has() would be dropped whole, taking the .gs-active fallback with it. */
+.glass-readonly-block:has(.gs-slider-thumb.gs-dragging) {
+  background: var(--gs-background-active);
+  border-color: var(--gs-border-active);
+  border-width: 2px;
+  box-shadow: 0 12px 40px var(--gs-shadow-active),
+  inset 0 0 0 1px var(--gs-shadow-active-inset);
+}
+
+/* fallback for browsers without :has() â€” add/remove .gs-active from JS
+   on pointerdown / pointerup (the slider engine already does this) */
+.glass-readonly-block.gs-active {
+  background: var(--gs-background-active);
+  border-color: var(--gs-border-active);
+  border-width: 2px;
+  box-shadow: 0 12px 40px var(--gs-shadow-active),
+  inset 0 0 0 1px var(--gs-shadow-active-inset);
+}
+
+/* no backdrop-filter support: solid translucent fallback */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass-readonly-block {
+    background: rgba(20, 20, 30, 0.82);
+  }
+}
+
+/* OS "reduce transparency": same solid fallback, blur off */
+@media (prefers-reduced-transparency: reduce) {
+  .glass-readonly-block {
+    background: rgba(20, 20, 30, 0.82);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+/* OS "reduce motion": no hover animation */
+@media (prefers-reduced-motion: reduce) {
+  .glass-readonly-block {
+    transition: none !important;
+  }
+}
+
+/* Read-only block bleeds past the card's inner padding.
+   Set --gs-card-pad to match the glass card's actual content padding. */
+.gs-readonly-bleed {
+  --gs-card-pad: 1.5rem;
+  margin-left: calc(-1 * var(--gs-card-pad));
+  margin-right: calc(-1 * var(--gs-card-pad));
+  /* Auto width: the negative left/right margins widen the block on both sides.
+     align-self: stretch keeps that true if the parent is a flex container. */
+  box-sizing: border-box;
+  width: auto;
+  max-width: none;
+  align-self: stretch;
+  padding: 1rem var(--gs-card-pad);
+  /* Explicit top gap: the element above may have no bottom padding/margin.
+     Bottom margin is 0 on purpose: it would collapse with the negative
+     margin-top of a following Bootstrap .row.g-3 (see sibling rule below),
+     leaving almost no gap. The row's own first-child gutter (1rem) provides it. */
+  margin-top: 1rem;
+  margin-bottom: 0;
+  background: rgba(128, 128, 128, 0.10);
+  border-top: 1px solid rgba(128, 128, 128, 0.25);
+  border-bottom: 1px solid rgba(128, 128, 128, 0.25);
+}
+
+/* Own class (not .gs-slider) so pages that also render glass:rangeSlider, which
+   loads gs-slider-core.css with its own display/width rules for .gs-slider,
+   cannot override the bleed. Explicit width keeps both edges symmetric. */
+.glass-readonly-block.gs-readonly-bleed {
+  display: block;
+  box-sizing: border-box;
+  width: calc(100% + 2 * var(--gs-card-pad));
+  max-width: none;
+  min-width: 0;
+}
+
+/* Cancel the row's negative gutter offset so the gap below the block is a
+   predictable 1rem instead of a collapsed ~0.25rem. */
+.gs-readonly-bleed + .row {
+  margin-top: 0;
+}
+
+@media (max-width: 575.98px) {
+  .gs-readonly-bleed {
+    --gs-card-pad: 1rem; /* match the card's smaller padding on phones */
+  }
+}

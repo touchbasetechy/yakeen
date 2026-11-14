@@ -1,0 +1,68 @@
+# ---- Gradle ----
+.gradle/
+build/
+out/
+!gradle/wrapper/gradle-wrapper.jar
+
+# ---- Grails / Java build artifacts ----
+*.war
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+*.log
+stacktrace.log
+hs_err_pid*
+.attach_pid*
+
+# ---- Frontend toolchain (if used) ----
+node_modules/
+
+# ---- Local database files ----
+*.db
+*.h2.db
+*.mv.db
+*.trace.db
+
+# ---- Local config / secrets ----
+sendgrid.env
+*.env
+.env
+application-local.yml
+application-local.groovy
+*-local.yml
+*-local.groovy
+*.pem
+*.key
+*.keystore
+*.jks
+
+# ---- IntelliJ IDEA ----
+.idea/
+*.iml
+*.ipr
+*.iws
+*.ids
+
+# ---- Eclipse / STS ----
+.classpath
+.factorypath
+.project
+.settings/
+.springBeans
+.sts4-cache/
+bin/
+
+# ---- VS Code ----
+.vscode/
+
+# ---- NetBeans ----
+nbproject/private/
+nbbuild/
+nbdist/
+
+# ---- OS files ----
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+*~
+*.swp

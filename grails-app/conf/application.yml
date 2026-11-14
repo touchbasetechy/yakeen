@@ -1,0 +1,746 @@
+# grails-app/conf/application.yml
+
+info:
+  app:
+    name: '@info.app.name@'
+    version: '@info.app.version@'
+    grailsVersion: '@info.app.grailsVersion@'
+
+app:
+  baseUrl: "http://localhost:8080"
+
+geoip:
+  database:
+    path: /opt/yakeen/geoip/GeoLite2-City.mmdb
+    tempPath: /opt/yakeen/geoip/GeoLite2-City.mmdb.tmp
+  maxmind:
+    #    licenseKey: ${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} # read from environment variable, don't hardcode
+    licenseKey: ${MAXMIND_LICENSE_KEY} # read from environment variable, don't hardcode
+    downloadUrl: https://download.maxmind.com/app/geoip_download
+    editionId: GeoLite2-City
+
+
+dataSource:
+  url: jdbc:postgresql://localhost:5432/firstapp
+  driverClassName: org.postgresql.Driver
+  dialect: org.hibernate.dialect.PostgreSQLDialect
+  username: postgres
+  password: fathiali34
+  pooled: true
+  jmxExport: true
+  dbCreate: update # none
+  properties:
+    initialSize: 0       # don't eagerly open pool connections at startup
+    minIdle: 0
+    maxActive: 10
+    testOnBorrow: false
+    testOnConnect: false
+    testWhileIdle: false
+    validationQuery: SELECT 1
+
+hibernate:
+  cache:
+    queries: false
+    use_second_level_cache: false
+    use_query_cache: false
+  temp:
+    use_jdbc_metadata_defaults: false   # skip Hibernate's own DB metadata probe at boot
+
+# JWT Configuration
+jwt:
+  secret: ${JWT_SECRET:myVerySecureSecretKeyThatIsAtLeast256BitsLongForHS256AlgorithmSecurity}
+  expiration: 86400  # 24 hours in seconds
+
+# Google OAuth2 Configuration
+google:
+  oauth2:
+    client:
+      clientId: ${GOOGLE_CLIENT_ID:257325687916-k606n1jp5pn3odfq6ufacdgofcb2m1lj.apps.googleusercontent.com}
+      clientSecret: ${GOOGLE_CLIENT_SECRET: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}
+      scope:
+        - openid
+        - profile
+        - email
+      redirectUri: ${GOOGLE_REDIRECT_URI:http://localhost:8080/oauth2/callback/google}
+      authorizationUri: https://accounts.google.com/o/oauth2/v2/auth
+      tokenUri: https://oauth2.googleapis.com/token
+      userInfoUri: https://www.googleapis.com/oauth2/v2/userinfo
+      jwkSetUri: https://www.googleapis.com/oauth2/v3/certs
+    resource:
+      userInfoUri: https://www.googleapis.com/oauth2/v2/userinfo
+
+github:
+  oauth2:
+    client:
+      clientId: ${GITHUB_CLIENT_ID:Ov23li1j6ux05m9LNSAx}
+      clientSecret: ${GITHUB_CLIENT_SECRET:dce2e369b3cc94278738e39e923366f4929d9122}
+      scope: 'user:email'
+      redirectUri: 'http://localhost:8080/oauth2/callback/github'
+    provider:
+      authorizationUri: 'https://github.com/login/oauth/authorize'
+      tokenUri: 'https://github.com/login/oauth/access_token'
+      userInfoUri: 'https://api.github.com/user'
+      userEmailsUri: 'https://api.github.com/user/emails'
+      userNameAttribute: 'login'
+
+grails:
+  profile: web
+  codegen:
+    defaultPackage: com.murad.app.matrimony
+  gorm:
+    reactor:
+      events: false
+
+  serverURL: "http://localhost:8080"
+
+  # Mail Configuration
+  mail:
+    host: "localhost"
+    port: 25
+    username: ""
+    password: ""
+    props:
+      mail.smtp.auth: false
+      mail.smtp.starttls.enable: false
+      mail.smtp.starttls.required: false
+      mail.smtp.ssl.enable: false
+      mail.debug: false
+
+  # Shortlist Configuration
+  shortlist:
+    enabled: true
+    templates:
+      added: "shortlist/added"
+      removed: "shortlist/removed"
+      mutual: "shortlist/mutual"
+
+  # Cache Configuration
+  cache:
+    shortlist:
+      enabled: true
+      timeToLive: 300
+
+  assets:
+    minifyJs: false
+    enableSourceMaps: true
+
+  web:
+    multipart:
+      maxFileSize: 512MB
+      maxRequestSize: 750MB
+      enabled: true
+
+  plugin:
+    springsecurity:
+      rememberMe:
+        persistent: false
+      csrf:
+        disabled: true
+
+      # ── Session / JWT fix ─────────────────────────────────────────────
+      useSessionFixationPrevention: false
+
+      # User domain configuration
+      userLookup:
+        userDomainClassName: 'com.murad.app.matrimony.Person'
+        usernamePropertyName: 'eMail'
+        passwordPropertyName: 'password'
+        enabledPropertyName: 'enabled'
+        accountExpiredPropertyName: 'accountExpired'
+        accountLockedPropertyName: 'accountLocked'
+        passwordExpiredPropertyName: 'passwordExpired'
+        authoritiesPropertyName: 'authorities'
+
+      # Authority/Role configuration
+      authority:
+        className: 'com.murad.app.matrimony.PersonType'
+        nameField: 'personTypeName'
+
+      # User-Role relationship configuration
+      userRole:
+        className: 'com.murad.app.matrimony.PersonPersonType'
+        userPropertyName: 'person'
+        rolePropertyName: 'personType'
+
+      # Password encoding
+      password:
+        algorithm: 'bcrypt'
+        bcrypt:
+          logrounds: 12
+
+      # Authentication configuration
+      auth:
+        loginFormUrl: '/auth/login'
+        ajaxLoginFormUrl: '/login/authAjax'
+
+      # OAuth2 Configuration
+      oauth2:
+        enabled: true
+        active: true
+
+      # Success/Failure handlers
+      successHandler:
+        defaultTargetUrl: '/DBoard/index'
+        alwaysUseDefault: false
+        useReferer: true
+        oauth2SuccessUrl: '/DBoard/index'
+
+      failureHandler:
+        defaultFailureUrl: '/auth/login?login_error=1'
+        ajaxAuthFailUrl: '/login/authfail'
+        oauth2FailureUrl: '/auth/login?oauth2_error=1'
+
+      logout:
+        filterProcessesUrl: '/logout'
+        postOnly: true
+        afterLogoutUrl: '/'
+        handlerNames:
+          - signInLogLogoutHandler
+          - securityContextLogoutHandler
+
+      securityConfigType: 'Annotation'
+
+      # Static rules for annotation-based security
+      controllerAnnotations:
+        staticRules:
+          - pattern: '/assets/**'
+            access: [ 'permitAll' ]
+          - pattern: '/**/js/**'
+            access: [ 'permitAll' ]
+          - pattern: '/**/css/**'
+            access: [ 'permitAll' ]
+          - pattern: '/**/images/**'
+            access: [ 'permitAll' ]
+          - pattern: '/**/favicon.ico'
+            access: [ 'permitAll' ]
+          - pattern: '/login/**'
+            access: [ 'permitAll' ]
+          - pattern: '/auth/**'
+            access: [ 'permitAll' ]
+          - pattern: '/api/auth/**'
+            access: [ 'permitAll' ]
+          - pattern: '/api/login'
+            access: [ 'permitAll' ]
+          - pattern: '/api/logout'
+            access: [ 'permitAll' ]
+          - pattern: '/register/**'
+            access: [ 'permitAll' ]
+          - pattern: '/oAuth2/**'
+            access: [ 'permitAll' ]
+          - pattern: '/oauth2/**'
+            access: [ 'permitAll' ]
+          - pattern: '/forgot-password'
+            access: [ 'permitAll' ]
+          - pattern: '/reset-password'
+            access: [ 'permitAll' ]
+          - pattern: '/reset-password/**'
+            access: [ 'permitAll' ]
+          - pattern: '/update-password'
+            access: [ 'permitAll' ]
+          - pattern: '/user/activate'
+            access: [ 'permitAll' ]
+          - pattern: '/user/activate/**'
+            access: [ 'permitAll' ]
+          - pattern: '/'
+            access: [ 'permitAll' ]
+          - pattern: '/error'
+            access: [ 'permitAll' ]
+          - pattern: '/index'
+            access: [ 'permitAll' ]
+          - pattern: '/logout/**'
+            access: [ 'permitAll' ]
+          - pattern: '/test/**'
+            access: [ 'permitAll' ]
+          - pattern: '/testMail/**'
+            access: [ 'permitAll' ]
+          # ── Chat WebSocket (added by chat module) ─────────────────────
+          - pattern: '/ws/**'
+            access: [ 'permitAll' ]
+          - pattern: '/chat/**'
+            access: [ 'IS_AUTHENTICATED_FULLY' ]
+          # ── Multi-identity (Gmail-style concurrent login) ──────────────
+          # Access control for these is enforced manually inside
+          # IdentityResolvingInterceptor, not via annotations/filterInvocationInterceptor
+          # (see filterChain.chainMap below), so these are permitAll at the
+          # filter layer to satisfy rejectIfNoRule.
+          - pattern: '/u/*/location/**'
+            access: [ 'permitAll' ]
+          - pattern: '/u/**'
+            access: [ 'permitAll' ]
+          - pattern: '/logoutAll'
+            access: [ 'permitAll' ]
+
+      # Filter chain configuration
+      filterChain:
+        chainMap:
+          - pattern: '/assets/**'
+            filters: 'none'
+          - pattern: '/**/js/**'
+            filters: 'none'
+          - pattern: '/**/css/**'
+            filters: 'none'
+          - pattern: '/**/images/**'
+            filters: 'none'
+          - pattern: '/**/favicon.ico'
+            filters: 'none'
+          - pattern: '/forgot-password'
+            filters: 'none'
+          - pattern: '/reset-password'
+            filters: 'none'
+          - pattern: '/reset-password/**'
+            filters: 'none'
+          - pattern: '/update-password'
+            filters: 'none'
+          - pattern: '/user/activate'
+            filters: 'none'
+          - pattern: '/user/activate/**'
+            filters: 'none'
+          - pattern: '/login/authenticate'
+            filters: 'none'
+          - pattern: '/login/auth'
+            filters: 'none'
+          - pattern: '/login/authAjax'
+            filters: 'none'
+          - pattern: '/auth/login'
+            filters: 'none'
+          - pattern: '/auth/**'
+            filters: 'none'
+          - pattern: '/api/auth/**'
+            filters: 'none'
+          - pattern: '/api/login'
+            filters: 'none'
+          - pattern: '/register/**'
+            filters: 'none'
+          - pattern: '/oauth2/**'
+            filters: 'none'
+          - pattern: '/test/**'
+            filters: 'none'
+          - pattern: '/testMail/**'
+            filters: 'none'
+          # ── Chat WebSocket bypass (added by chat module) ──────────────
+          - pattern: '/ws/**'
+            filters: 'none'
+          # ── Multi-identity (Gmail-style concurrent login) ─────────────
+          # /u/** must NOT run securityContextPersistenceFilter (it would
+          # overwrite the shared HttpSession's security context on every
+          # request from every tab) or filterInvocationInterceptor (it
+          # would enforce @Secured using that same stale, shared context
+          # instead of the slot-resolved person). IdentityResolvingInterceptor
+          # is the sole authority for authentication AND authorization here.
+          # CORRECTED bean name: it's "filterInvocationInterceptor", not
+          # "filterSecurityInterceptor" — the latter is silently ignored
+          # since no such bean exists in JOINED_FILTERS, which was letting
+          # the real interceptor run and throw AccessDeniedException on
+          # every /u/** request. exceptionTranslationFilter is kept IN
+          # the chain so any residual AccessDeniedException/AuthenticationException
+          # still redirects gracefully instead of surfacing as a raw stack trace.
+          # Must be declared before the generic '/**' pattern below.
+          - pattern: '/u/**'
+            filters: 'JOINED_FILTERS,-securityContextPersistenceFilter,-filterInvocationInterceptor'
+          # API routes: Bearer token only, no form/basic auth
+          - pattern: '/api/**'
+            filters: 'JOINED_FILTERS,-basicAuthenticationFilter,-formAuthenticationFilter'
+          # Web routes: Bearer token + form auth, session disabled
+          - pattern: '/**'
+            filters: 'JOINED_FILTERS,-basicAuthenticationFilter'
+
+      securityContextPersistenceFilter:
+        forceEagerSessionCreation: false
+
+      # ── REST / JWT token config ───────────────────────────────────────
+      rest:
+        login:
+          useJsonCredentials: true
+          usernamePropertyName: 'username'
+          passwordPropertyName: 'password'
+          endpointUrl: '/api/login'
+          successKeyName: 'token'
+          failureStatusCode: 401
+        logout:
+          endpointUrl: '/api/logout'
+        token:
+          storage:
+            useGorm: false
+            useMemcached: false
+            # ── JWT secret (added by chat module) ─────────────────────
+            jwt:
+              secret: ${JWT_SECRET:myVerySecureSecretKeyThatIsAtLeast256BitsLongForHS256AlgorithmSecurity}
+          validation:
+            useBearerToken: true
+            headerName: 'Authorization'
+            endpointUrl: '/api/validate'
+          generation:
+            useSecureRandom: true
+            useUUID: false
+
+      # Reject if no rule matches
+      rejectIfNoRule: true
+
+      # Frame options
+      frameOptions:
+        policy: 'DENY'
+
+      # Content security policy
+      # ── Extended connect-src to allow ws:// for WebSocket (chat module)
+      contentSecurityPolicy:
+        enabled: true
+        policyDirectives: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; connect-src 'self' ws://localhost:8080 wss://localhost:8080 https://accounts.google.com https://oauth2.googleapis.com; frame-src https://accounts.google.com"
+
+      debug:
+        useFilter: false
+
+      useBasicAuth: false
+      basic:
+        realmName: 'Grails Realm'
+
+      useDigestAuth: false
+      useSwitchUserFilter: false
+
+    shortlist:
+      requireAuthentication: true
+      checkProfileVisibility: true
+
+# ── Spring (added by chat module; RabbitMQ defaults added for dev/default env) ──
+spring:
+  main:
+    banner-mode: 'off'
+  groovy:
+    template:
+      check-template-location: false
+
+  # RabbitMQ — base/dev defaults. Overridden per-environment below (see
+  # environments.production.spring.rabbitmq for the production-hardened version).
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    virtual-host: ${RABBITMQ_VHOST:/}
+    connection-timeout: 15000
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    cache:
+      channel:
+        size: 25
+        checkout-timeout: 5000
+      connection:
+        mode: channel
+    listener:
+      simple:
+        acknowledge-mode: manual
+        concurrency: 2
+        max-concurrency: 5
+        prefetch: 10
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          initial-interval: 1000
+          max-attempts: 3
+          max-interval: 10000
+          multiplier: 2.0
+        missing-queues-fatal: false
+
+# WebSocket / STOMP message size limits (added by chat module)
+spring.websocket.maxTextMessageSize: 65536
+spring.websocket.maxBinaryMessageSize: 65536
+
+micronaut:
+  router:
+    static-resources:
+      default:
+        paths: classpath:public
+        mapping: /**
+  application:
+    name: Yakeen Matrimony
+
+gorm:
+  reactor:
+    enabled: true
+
+# CORS Configuration
+# ── ws:// origins added by chat module
+cors:
+  enabled: true
+  allowedOrigins:
+    - 'http://localhost:3000'
+    - 'http://localhost:4200'
+    - 'http://localhost:8080'
+    - 'https://accounts.google.com'
+    - 'https://github.com'
+    - 'https://api.github.com'
+  allowedOriginPatterns:
+    - 'http://localhost:*'
+    - 'https://*.google.com'
+    - 'https://*.github.com'
+  allowedMethods:
+    - 'GET'
+    - 'POST'
+    - 'PUT'
+    - 'DELETE'
+    - 'OPTIONS'
+    - 'PATCH'
+  allowedHeaders:
+    - 'Content-Type'
+    - 'Authorization'
+    - 'X-Requested-With'
+    - 'Accept'
+    - 'Origin'
+  exposedHeaders:
+    - 'Authorization'
+  allowCredentials: true
+  maxAge: 3600
+
+# WebSocket Configuration (updated by chat module — endpoint aligned with WebSocketConfig.groovy)
+websocket:
+  enabled: true
+  stomp:
+    endpoint: "/ws/chat"
+    broker:
+      path: "/topic"
+
+# Quartz Configuration
+quartz:
+  autoStartup: true
+  jdbcStore: false
+
+# Server Configuration
+server:
+  error:
+    whitelabel:
+      enabled: false
+    include-stacktrace: never
+    include-message: always
+    path: /error
+  port: 8080
+  servlet:
+    session:
+      timeout: 8h
+      cookie:
+        http-only: true
+        secure: false
+
+# Logging Configuration
+logging:
+  level:
+    ROOT: INFO
+    grails:
+      app: DEBUG
+      plugin:
+        springsecurity: TRACE
+        mail: DEBUG
+    org:
+      springframework:
+        security: DEBUG
+        security.oauth2: DEBUG
+        web: DEBUG
+        mail: DEBUG
+        websocket: DEBUG
+        messaging: DEBUG
+      hibernate:
+        SQL: WARN
+        type:
+          descriptor:
+            sql:
+              BasicBinder: TRACE
+    com:
+      murad:
+        app: DEBUG
+      rabbitmq: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/firstapp.log
+
+# Kafka Configuration
+kafka:
+  bootstrap:
+    servers: localhost:9092
+
+# MIME Types
+mime:
+  disable:
+    accept:
+      header:
+        userAgents:
+          - Gecko
+          - WebKit
+          - Presto
+          - Trident
+  types:
+    all: '*/*'
+    atom: application/atom+xml
+    css: text/css
+    csv: text/csv
+    form: application/x-www-form-urlencoded
+    html:
+      - text/html
+      - application/xhtml+xml
+    js: text/javascript
+    json:
+      - application/json
+      - text/json
+    multipartForm: multipart/form-data
+    pdf: application/pdf
+    rss: application/rss+xml
+    text: text/plain
+    hal:
+      - application/hal+json
+      - application/hal+xml
+    xml:
+      - text/xml
+      - application/xml
+
+# Resources Configuration
+resources:
+  pattern: '/**'
+
+# Exception Resolver
+exceptionresolver:
+  render-exceptions: true
+
+# Views Configuration
+views:
+  gsp:
+    encoding: UTF-8
+    htmlcodec: xml
+    codecs:
+      expression: html
+      scriptlet: html
+      taglib: none
+      staticparts: none
+  default:
+    codec: html
+
+# Controllers Configuration
+controllers:
+  defaultScope: singleton
+  upload:
+    maxFileSize: 10485760  # 10MB
+    maxRequestSize: 10485760  # 10MB
+
+# Environment-specific configurations
+environments:
+  development:
+    google:
+      oauth2:
+        client:
+          redirectUri: http://localhost:8080/oauth2/callback/google
+
+    grails:
+      plugin:
+        springsecurity:
+          debug:
+            useFilter: false
+
+    logging:
+      level:
+        org.springframework.security: DEBUG
+        org.springframework.security.oauth2: DEBUG
+        grails.plugin.springsecurity: DEBUG
+        grails.plugin.mail: DEBUG
+        org.springframework.mail: DEBUG
+        org.springframework.websocket: DEBUG
+        org.springframework.messaging: DEBUG
+
+  production:
+    app:
+      baseUrl: "https://yakeen.in"
+
+    google:
+      oauth2:
+        client:
+          redirectUri: ${GOOGLE_REDIRECT_URI:https://yakeen.in/oauth2/callback/google}
+
+    server:
+      servlet:
+        session:
+          cookie:
+            secure: true
+
+    grails:
+      plugin:
+        springsecurity:
+          debug:
+            useFilter: false
+          contentSecurityPolicy:
+            enabled: true
+            policyDirectives: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; connect-src 'self' wss://yakeen.in https://accounts.google.com https://oauth2.googleapis.com; frame-src https://accounts.google.com"
+
+    logging:
+      level:
+        ROOT: WARN
+        grails.app: INFO
+
+    # ── RabbitMQ — production-ready settings (cluster failover, TLS,
+    #    publisher confirms/returns, manual acks, retry/backoff, DLQ-aware
+    #    consumer settings). Replaces the dev defaults defined under the
+    #    top-level spring.rabbitmq block for this environment only.
+    spring:
+      rabbitmq:
+        addresses: ${RABBITMQ_NODE1:rabbit1.internal:5672},${RABBITMQ_NODE2:rabbit2.internal:5672},${RABBITMQ_NODE3:rabbit3.internal:5672}
+        username: ${RABBITMQ_USER}
+        password: ${RABBITMQ_PASSWORD}
+        virtual-host: ${RABBITMQ_VHOST:/prod}
+
+        ssl:
+          enabled: true
+          algorithm: TLSv1.2
+          trust-store: ${RABBITMQ_TRUSTSTORE_PATH}
+          trust-store-password: ${RABBITMQ_TRUSTSTORE_PASSWORD}
+
+        connection-timeout: 15000
+        channel-rpc-timeout: 10000
+
+        cache:
+          channel:
+            size: 50
+            checkout-timeout: 5000
+          connection:
+            mode: channel
+
+        publisher-confirm-type: correlated
+        publisher-returns: true
+
+        listener:
+          simple:
+            acknowledge-mode: manual
+            concurrency: 5
+            max-concurrency: 20
+            prefetch: 10
+            default-requeue-rejected: false
+            retry:
+              enabled: true
+              initial-interval: 1000
+              max-attempts: 5
+              max-interval: 30000
+              multiplier: 2.0
+            missing-queues-fatal: false
+
+# Shortlist specific configurations
+matrimony:
+  shortlist:
+    maxSize: 100
+    maxNoteLength: 500
+    enableNotifications: true
+    cleanupInterval: 30
+    allowMutualShortlist: true
+    pagination:
+      defaultMax: 10
+      maxMax: 50
+
+connectivity:
+  check:
+    enabled: true
+    url: 'https://www.google.com'
+    timeout: 3000
+
+management:
+  endpoints:
+    enabled-by-default: false
+    web:
+      exposure:
+        include: health,info,metrics
+  health:
+    rabbit:
+      enabled: true
