@@ -18,3 +18,14 @@ rm -rf build .gradle .idea
 
 git add -A
 git commit -m "Rename app from firstapp to Yakeen"
+
+git remote set-url origin https://github.com/touchbasetechy/yakeen.git
+git remote -v
+
+
+on error for git push
+=====================
+
+git config --global http.postBuffer 524288000
+git config --global http.version HTTP/1.1
+git push -u origin main
