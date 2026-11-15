@@ -19,7 +19,7 @@ plugins {
   id "eclipse"
 }
 
-group = "com.murad.app.matrimony"
+group = "Yakeen Matrimony"
 
 repositories {
   mavenCentral()

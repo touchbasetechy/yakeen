@@ -21,7 +21,7 @@ geoip:
 
 
 dataSource:
-  url: jdbc:postgresql://localhost:5432/firstapp
+  url: jdbc:postgresql://localhost:5432/yakeenmm
   driverClassName: org.postgresql.Driver
   dialect: org.hibernate.dialect.PostgreSQLDialect
   username: postgres
@@ -550,7 +550,7 @@ logging:
     console: "%d{yyyy-MM-dd HH:mm:ss} - %logger{36} - %msg%n"
     file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
   file:
-    name: logs/firstapp.log
+    name: logs/yakeenmm.log
 
 # Kafka Configuration
 kafka:

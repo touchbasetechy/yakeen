@@ -31,7 +31,7 @@ class Application extends GrailsAutoConfiguration {
   }
 
   static boolean isDbReachable() {
-    String url = System.getenv('DB_URL') ?: 'jdbc:postgresql://localhost:5432/firstapp'
+    String url = System.getenv('DB_URL') ?: 'jdbc:postgresql://localhost:5432/yakeenmm'
     String user = System.getenv('DB_USER') ?: 'postgres'
     String pass = System.getenv('DB_PASS') ?: 'fathiali34'
     try {

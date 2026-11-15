@@ -1,0 +1,20 @@
+git mv grails-app/controllers/firstapp grails-app/controllers/yakeen
+git mv grails-app/domain/firstapp grails-app/domain/yakeen
+git mv grails-app/services/firstapp grails-app/services/yakeen
+git mv grails-app/init/firstapp grails-app/init/yakeen
+git mv src/main/groovy/firstapp src/main/groovy/yakeen
+git mv src/test/groovy/firstapp src/test/groovy/yakeen
+git mv src/integration-test/groovy/firstapp src/integration-test/groovy/yakeen
+
+grep -rl "firstapp" --include=*.groovy --include=*.gsp --include=*.yml --include=*.gradle --include=*.xml --include=*.properties . \
+  --exclude-dir=build --exclude-dir=.gradle --exclude-dir=.git --exclude-dir=.idea \
+  | xargs sed -i '' 's/firstapp/yakeen/g'
+
+rm -rf build .gradle .idea
+./gradlew clean
+
+./gradlew build
+./gradlew bootRun
+
+git add -A
+git commit -m "Rename app from firstapp to YakeenMM"
