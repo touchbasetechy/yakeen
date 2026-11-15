@@ -17,4 +17,4 @@ rm -rf build .gradle .idea
 ./gradlew bootRun
 
 git add -A
-git commit -m "Rename app from firstapp to YakeenMM"
+git commit -m "Rename app from firstapp to Yakeen"
