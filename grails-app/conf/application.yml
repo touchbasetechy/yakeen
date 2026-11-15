@@ -14,6 +14,7 @@ geoip:
     path: /opt/yakeen/geoip/GeoLite2-City.mmdb
     tempPath: /opt/yakeen/geoip/GeoLite2-City.mmdb.tmp
   maxmind:
+    #    licenseKey: ${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} # read from environment variable, don't hardcode
     licenseKey: ${MAXMIND_LICENSE_KEY} # read from environment variable, don't hardcode
     downloadUrl: https://download.maxmind.com/app/geoip_download
     editionId: GeoLite2-City
@@ -54,8 +55,8 @@ jwt:
 google:
   oauth2:
     client:
-      #      clientId: ${GOOGLE_CLIENT_ID}
-      #      clientSecret: ${GOOGLE_CLIENT_SECRET}
+      clientId: ${GOOGLE_CLIENT_ID:257325687916-k606n1jp5pn3odfq6ufacdgofcb2m1lj.apps.googleusercontent.com}
+      clientSecret: ${GOOGLE_CLIENT_SECRET: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}
       scope:
         - openid
         - profile
