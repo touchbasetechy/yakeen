@@ -407,6 +407,9 @@
               window.location.href = data.redirectUrl;
             }, 700);
           }
+        } else if (response.status === 409) {
+          // Controller (saveSpouseFamilyDetails): "Spouse family details already exists!"
+          window.showWarning(data.message || "Spouse family details already exist.");
         } else if (response.status === 400) {
           window.showWarning(data.message || "Please check your input and try again.");
         } else {

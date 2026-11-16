@@ -1,7 +1,6 @@
 <%@ page contentType="text/html;charset=UTF-8" %>
 <html>
 <head>
-  <title>Login</title>
   <asset:stylesheet src="application.css"/>
 </head>
 

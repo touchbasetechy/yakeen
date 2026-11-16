@@ -290,6 +290,9 @@
               window.location.href = data.redirectUrl;
             }, 1500);
           }
+        } else if (response.status === 409) {
+          // saveSpouseDetails → 409 "Spouse details already exists!"
+          showWarning(data.message || 'Spouse details already exist.');
         } else if (response.status === 400) {
           showWarning(data.message || 'Please check your input and try again.');
         } else {

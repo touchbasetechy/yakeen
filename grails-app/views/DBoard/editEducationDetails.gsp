@@ -112,7 +112,7 @@
     </glass:tabs>
   </g:if>
   <g:else>
-    <glass:text>No Education Details found. Click <strong>+</strong> to add one.</glass:text>
+    <glass:text>No Education Details found. Click <strong>&nbsp;+&nbsp;</strong> to add one</glass:text>
   </g:else>
 
 </glass:modernGlassCard>
@@ -241,6 +241,8 @@
             window.showWarning(data.message || "A highest education record already exists.");
             GlassModal.open('educationStatusModal');
 
+          } else if (response.status === 404) {
+            window.showWarning(data.message || "Education details not found.");
           } else if (response.status === 400) {
             window.showWarning(data.message || "Please check your input and try again.");
           } else {

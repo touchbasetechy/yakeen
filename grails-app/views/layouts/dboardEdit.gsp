@@ -14,7 +14,7 @@
   <glass:tooltipStyles/>
 
   <title>
-  <g:layoutTitle default="Murad"/>
+  <g:layoutTitle default="${grailsApplication.metadata.getApplicationName()}"/>
   </title>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <asset:link rel="icon" href="favicon.ico" type="image/x-ico"/>

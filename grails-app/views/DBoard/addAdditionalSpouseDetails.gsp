@@ -141,6 +141,10 @@
             }, 1500);
           }
 
+        } else if (response.status === 409) {
+          // Controller (saveAdditionalSpouseDetails): "Additional spouse details already exists!"
+          window.showWarning(data.message || "Additional spouse details already exist.");
+
         } else if (response.status === 400) {
           window.showWarning(data.message || "Please check your input and try again.");
 

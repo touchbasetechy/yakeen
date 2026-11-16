@@ -19,18 +19,6 @@
 </head>
 
 <body>
-
-%{--<ul class="d-flex justify-content-end">--}%
-%{--  <g:if test="${params?.ac == 'an'}">--}%
-%{--    <li><span class="badge badge-success fixed-size-badge">Super Admin<i class="fa fa-user-plus"--}%
-%{--                                                                         aria-hidden="true"></i>--}%
-%{--    </span></li>--}%
-%{--  </g:if>--}%
-%{--  <li><a href="${createLink(controller: 'profile', action: 'index')}">Profile</a></li>--}%
-%{--  <li><a href="${createLink(controller: 'search', action: 'index')}">Search</a></li>--}%
-%{--  <li><a href="${createLink(controller: 'signIn', action: 'logOut')}">Sign Out</a></li>--}%
-%{--</ul>--}%
-
 %{--<header>--}%
 %{--  <div class="d-flex justify-content-center">--}%
 %{--    <div class="header-section">--}%
@@ -269,6 +257,10 @@
               window.location.href = data.redirectUrl;
             }, 1500);
           }
+
+        } else if (response.status === 409) {
+          // savePersonDetails → 409 "Personal details already exists!"
+          window.showWarning(data.message || "Personal details already exist.");
 
         } else if (response.status === 400) {
           window.showWarning(data.message || "Please check your input and try again.");

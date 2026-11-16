@@ -3,7 +3,7 @@
 <html>
 <head>
   <meta name="layout" content="welcome"/>
-  <title>Signed in list</title>
+  <title>Signed in list - ${grailsApplication.metadata.getApplicationName()}</title>
   <glass:whiteAnchorStyles/>
 
   <style>

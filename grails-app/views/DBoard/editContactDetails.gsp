@@ -100,9 +100,7 @@
     </glass:tabs>
   </g:if>
   <g:else>
-    <p class="text-center">
-      No Contact Details found. Click <strong>+</strong> to add one.
-    </p>
+    <glass:text>No Contact Details found. Click <strong>&nbsp;+&nbsp;</strong> to add one</glass:text>
   </g:else>
 
 </glass:modernGlassCard>
@@ -208,6 +206,8 @@
             window.showWarning(data.message || "A primary contact already exists.");
             GlassModal.open('contactStatusModal');
 
+          } else if (response.status === 404) {
+            window.showWarning(data.message || "Contact details not found.");
           } else if (response.status === 400) {
             window.showWarning(data.message || "Please check your input and try again.");
           } else {

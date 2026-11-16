@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Welcome - Murad Matrimony</title>
+  <title>Welcome - ${grailsApplication.metadata.getApplicationName()}
+  </title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
   * {
@@ -393,7 +394,7 @@
 <div class="container">
   <!-- Hero Section -->
   <div class="hero">
-    <h1>Welcome to Murad Matrimony</h1>
+    <h1>Welcome to ${grailsApplication.metadata.getApplicationName()}</h1>
 
     <p class="lead">Find your perfect match with our comprehensive matrimonial platform.</p>
 

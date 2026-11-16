@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta name="layout" content="dboardEdit"/>
-  <glass:glassCardStyles/>
+  <glass:glassCardStyles/>,
   <glass:styles/>
   <glass:textInputStyles/>
   <glass:slideAnimationStyles/>
@@ -360,6 +360,10 @@
               window.location.href = data.redirectUrl;
             }, 1500);
           }
+
+        } else if (response.status === 404) {
+          // Controller (updateSpouseDetails): "Spouse details not found."
+          window.showWarning(data.message || "Spouse details not found.");
 
         } else if (response.status === 400) {
           window.showWarning(data.message || "Please check your input and try again.");

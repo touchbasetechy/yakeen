@@ -306,6 +306,9 @@
               window.location.href = data.redirectUrl;
             }, 700);
           }
+        } else if (response.status === 409) {
+          // saveFamilyDetails → 409 "Family details already exists!"
+          window.showWarning(data.message || "Family details already exist.");
         } else if (response.status === 400) {
           window.showWarning(data.message || "Please check your input and try again.");
         } else {

@@ -2,7 +2,6 @@
 <html>
 <head>
   <meta name="layout" name="main"/>
-  <title>Login</title>
 </head>
 
 <body>

@@ -2,7 +2,8 @@
 <html>
 <head>
   <meta name="layout" content="main"/>
-  <title>Welcome - Matrimony App</title>
+  <title>Welcome - ${grailsApplication.metadata.getApplicationName()}
+  </title>
 </head>
 
 <body>

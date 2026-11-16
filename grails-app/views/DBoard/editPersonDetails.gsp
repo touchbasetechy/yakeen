@@ -241,6 +241,10 @@
             }, 1500);
           }
 
+        } else if (response.status === 404) {
+          // Controller (updatePersonDetails): "Personal details not found."
+          window.showWarning(data.message || "Personal details not found.");
+
         } else if (response.status === 400) {
           window.showWarning(data.message || "Please check your input and try again.");
 

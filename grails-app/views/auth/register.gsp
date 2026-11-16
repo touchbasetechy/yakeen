@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta name="layout" content="welcome"/>
-  <title>Register</title>
+  <title>Register - ${grailsApplication.metadata.getApplicationName()}</title>
   <glass:gradientHeadingStyles/>
   <glass:greenAnchorStyles/>
   <glass:whiteAnchorStyles/>

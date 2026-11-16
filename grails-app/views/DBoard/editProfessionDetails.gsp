@@ -172,9 +172,7 @@
     </glass:tabs>
   </g:if>
   <g:else>
-    <p class="text-center">
-      No Profession Details found. Click <strong>+</strong> to add one.
-    </p>
+    <glass:text>No Profession Details found. Click <strong>&nbsp;+&nbsp;</strong> to add one</glass:text>
   </g:else>
 
 </glass:modernGlassCard>
@@ -318,6 +316,8 @@
             window.showWarning(data.message || "A current job already exists.");
             GlassModal.open('jobStatusModal');
 
+          } else if (response.status === 404) {
+            window.showWarning(data.message || "Profession details not found.");
           } else if (response.status === 400) {
             window.showWarning(data.message || "Please check your input and try again.");
           } else {

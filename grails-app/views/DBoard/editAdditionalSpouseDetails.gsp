@@ -152,6 +152,10 @@
               window.location.href = data.redirectUrl;
             }, 1500);
           }
+
+        } else if (response.status === 404) {
+          window.showWarning(data.message || "Additional spouse details not found.");
+
         } else if (response.status === 400) {
           window.showWarning(data.message || "Please check your input and try again.");
         } else {

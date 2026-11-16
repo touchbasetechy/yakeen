@@ -9,35 +9,21 @@
 
 <body>
 
+<g:set var="spouseFamilyCardToggle">
+  <glassToggle:toggle name="sameAsFamilyDetails" id="sameAsFamilyDetails" label="Same As Family Details"
+                      disabled="${!familyDetails}"/>
+</g:set>
+
 <glass:modernGlassCard
   title="Edit Spouse Family Preferences"
   iconClass="fa-solid fa-chevron-left"
   iconController="DBoard"
   iconAction="index"
   titleHtml="true"
-  subtitle="Update your spouse family preferences">
+  subtitle="Update your spouse family preferences"
+  headerHtml="${spouseFamilyCardToggle}">
 
   <form id="editSpouseFamilyDetailsForm">
-
-    <%-- ── Same as Family Details toggle ─────────────────────────── --%>
-    <div class="row row-padding d-flex justify-content-end">
-      <div class="col-auto">
-        <label class="sleek-toggle">
-          <input class="toggle-input" type="checkbox" id="sameAsFamilyDetails"
-                 <g:if test="${!familyDetails}">disabled</g:if>>
-          <span class="toggle-track">
-            <span class="toggle-thumb"></span>
-            <span class="toggle-icons">
-              <span class="icon-on">✓</span>
-              <span class="icon-off">✕</span>
-            </span>
-          </span>
-          <span class="toggle-label">Same as Family Details</span>
-        </label>
-        <glass:t
-      </div>
-    </div>
-
     <%-- ── Marital Status ─────────────────────────────────────────── --%>
     <section class="row row-padding">
       <glass:radio name="maritalStatus" value="UnMarried" id="UnMarried"
@@ -104,9 +90,6 @@
 
     <%-- ── Family Status ─────────────────────────────────────────── --%>
     <section class="row row-padding">
-      <glass:radio name="familyStatus" value="Lower Middle Class" id="LowerMiddleClass"
-                   title="Lower Middle Class"
-                   checked="${spouseFamilyDetails?.familyStatus == 'Lower Middle Class'}"/>
       <glass:radio name="familyStatus" value="Middle Class" id="MiddleClass"
                    title="Middle Class"
                    checked="${spouseFamilyDetails?.familyStatus == 'Middle Class'}"/>
@@ -375,6 +358,8 @@
               window.location.href = data.redirectUrl;
             }, 1500);
           }
+        } else if (response.status === 404) {
+          window.showWarning(data.message || "Spouse family details not found.");
         } else if (response.status === 400) {
           window.showWarning(data.message || "Please check your input and try again.");
         } else {
