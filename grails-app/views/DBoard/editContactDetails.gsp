@@ -37,8 +37,8 @@
           title="${'Contact ' + (i + 1)}"
           active="${i == 0}">
 
+          <g:set var="i" value="0"/>
           <form id="contactDetailForm${i}" class="contactDetailForm">
-
             <input type="hidden" name="id" value="${contactDetail?.id}"/>
             <input type="hidden" name="op" value="${params?.op}"/>
             <input type="hidden" name="con" value="${params?.con}"/>
@@ -61,10 +61,20 @@
               </div>
 
               <div class="col-sm-8">
-                <glass:positiveNumericField
-                  name="mobileNumber" id="mobileNumber_${i}" label="Mobile Number"
-                  value="${contactDetail?.mobileNumber}"
-                  maxlength="15" required="true"/>
+                <glass:mobileInput name="mobileNumber"
+                                   id="mobileNumber_${i}"
+                                   countries="${countries}"
+                                   isdCodeName="isdCode"
+                                   countryName="country"
+                                   flagName="flag"
+                                   selectedIsdCode="${contactDetail?.isdCode}"
+                                   selectedCountry="${contactDetail?.country}"
+                                   selectedFlag="${contactDetail?.flag}"
+                                   value="${contactDetail?.mobileNumber}"
+                                   label="Mobile Number"
+                                   required="true"
+                                   fullName="mobileE164"/>
+
               </div>
 
             </section>
@@ -102,7 +112,6 @@
   <g:else>
     <glass:text>No Contact Details found. Click <strong>&nbsp;+&nbsp;</strong> to add one</glass:text>
   </g:else>
-
 </glass:modernGlassCard>
 
 <g:render template="contactStatusModal"/>

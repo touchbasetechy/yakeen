@@ -11,50 +11,22 @@ import com.murad.app.matrimony.GlassTooltipStylesTagLib
  *   <glass:formattedNumericField name="salary" value="${salary}" label="Annual Salary"
  *                                helperText="Enter a positive number" />
  *
- * Features
- * --------
- *  • Accepts only positive integers (≥ 1)
- *  • Live comma-formatting on the visible input; raw value kept in a hidden field
- *  • Floating label via CSS :placeholder-shown trick
- *  • Clear button – NOT rendered when disabled=true
- *  • Disabled state: frosted-glass + hatched overlay on the shell;
- *    muted italic text on the input
- *  • Tooltip on the clear button:
- *    – Rendered as a real <span class="glass-tooltip"> INSIDE the button (hidden source)
- *    – On hover/focus the tooltip is cloned to <body> so it escapes every
- *      backdrop-filter stacking context (fixes blur bleed from sibling fields)
- *    – Placement: top | right | bottom | left | auto (default auto)
- *      "auto" resolves dynamically:
- *        1. Coarse placement from button's viewport quadrant
- *        2. Bubble overflow check — flips to opposite side if bubble clips viewport
- *        3. Re-evaluated on resize, scroll, mouseenter, and focusin
+ * Floating label (FIXED)
+ * ──────────────────────
+ *  The label used to rely solely on the CSS :placeholder-shown trick inside the
+ *  shared "glass_stylesEmitted" block. That block is shared by every glass field
+ *  taglib and emitted only ONCE per page, by whichever field renders first — so on
+ *  a page where e.g. glass:alphaNumericTextField came first, this taglib's label
+ *  rules were never emitted and the other taglib's (different) rules governed the
+ *  label, leaving it stuck in its small state. The label is now driven by a
+ *  JS-managed `.is-floated` class on the .input-glass shell (set server-side when
+ *  there is an initial value, kept in sync on input / focus / blur / clear), with
+ *  its own scoped, once-per-page rules (guard: glass_fmtLabelStylesEmitted) that
+ *  cannot be skipped or overridden by another taglib's block.
+ *    empty + not focused → label sits centred at full size (acts as the placeholder)
+ *    focused OR has text → label floats to the top at the small size
  *
- * Tooltip DOM structure (per clear button)
- * ─────────────────────────────────────────
- *   <!-- Inside .input-glass (source / text reference — never shown directly) -->
- *   <button class="clear-btn" data-tooltip-placement="top|right|bottom|left"
- *           data-tooltip-text="Clear">
- *     <i class="fa-solid fa-xmark" aria-hidden="true"></i>
- *     <span class="glass-tooltip" aria-hidden="true">Clear</span>
- *   </button>
- *
- *   <!-- Appended to <body> on show (portal clone, avoids backdrop-filter trap) -->
- *   <span class="glass-tooltip glass-tooltip-portal" aria-hidden="true">Clear</span>
- *
- * The tooltip span is aria-hidden because the button already has aria-label.
- *
- * CSS responsibility
- * ──────────────────
- *  • Tooltip tokens + portal rules  → GlassTooltipStylesTagLib
- *    (emitted via tooltipStylesTagLib.emitTooltipStylesOnce(),
- *     guarded by GlassTooltipStylesTagLib.TOOLTIP_STYLES_EMITTED)
- *  • Input shell, disabled state, clear button shape, floating label,
- *    helper text                    → this taglib
- *    (emitted via emitSharedAssetsOnce(), guarded by STYLES_EMITTED)
- *
- * Note: glass:tooltipStyles is defined in GlassTooltipStylesTagLib.
- *       This taglib delegates to it via a lazy Spring context lookup —
- *       it never re-declares tooltip CSS or its guard key.
+ * Tooltip / disabled / clear-button behaviour is unchanged.
  *
  * Dependencies
  * ────────────
@@ -66,21 +38,14 @@ class FormattedNumericFieldTagLib {
 
   static namespace = "glass"
 
-  // ── Tooltip-styles delegate ───────────────────────────────────────────────
-  // Property injection of cross-namespace taglibs is unreliable in Grails —
-  // the bean may not be wired by the time the taglib is first used.
-  // grailsApplication is inherited from WebAttributes and is always available;
-  // we look up GlassTooltipStylesTagLib lazily via the Spring context.
   private GlassTooltipStylesTagLib getTooltipStylesTagLib() {
     grailsApplication.mainContext.getBean(GlassTooltipStylesTagLib)
   }
 
   private static final String STYLES_EMITTED = 'glass_stylesEmitted'
   private static final String FMT_SCRIPT_EMITTED = 'glass_fmtScriptEmitted'
+  private static final String FMT_LABEL_STYLES_EMITTED = 'glass_fmtLabelStylesEmitted'
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // glass:formattedNumericField
-  // ─────────────────────────────────────────────────────────────────────────
   /**
    * @attr name               REQUIRED – name attribute for the hidden input
    * @attr value              – initial value (raw numeric)
@@ -93,8 +58,6 @@ class FormattedNumericFieldTagLib {
    * @attr max                – maximum value
    * @attr class              – extra CSS classes on the visible <input>
    * @attr disabled           – true/false (default false)
-   *                            When true: clear button NOT rendered,
-   *                            shell gets frosted disabled treatment.
    * @attr readonly           – true/false (default false)
    * @attr autofocus          – true/false (default false)
    * @attr onchange           – JS onChange handler
@@ -150,11 +113,10 @@ class FormattedNumericFieldTagLib {
       }
     }
 
-    // ── Emit CSS (delegated to their respective owners) ─────────────────────
-    // Tooltip tokens + portal rules: owned by GlassTooltipStylesTagLib.
-    // Input-shell rules + formatted-numeric JS: owned by this taglib.
+    // ── Emit CSS / JS (each guarded once per page) ──────────────────────────
     tooltipStylesTagLib.emitTooltipStylesOnce()
     emitSharedAssetsOnce()
+    emitLabelStylesOnce()
     emitFormattedNumericScriptOnce()
 
     // ── Outer wrapper ───────────────────────────────────────────────────────
@@ -169,7 +131,10 @@ class FormattedNumericFieldTagLib {
     }
 
     // ── .input-glass shell ──────────────────────────────────────────────────
-    String shellClass = disabled ? 'input-glass is-disabled' : 'input-glass'
+    // .fnf scopes this taglib's own label/padding rules; .is-floated is the label state.
+    String shellClass = 'input-glass fnf'
+    if (disabled) shellClass += ' is-disabled'
+    if (formattedValue) shellClass += ' is-floated'
     out << "<div class=\"${shellClass}\">"
 
     // ── Hidden input — stores raw numeric value for form submission ──────────
@@ -186,7 +151,8 @@ class FormattedNumericFieldTagLib {
     out << "id=\"${id.encodeAsHTML()}\" "
     if (formattedValue) out << "value=\"${formattedValue.encodeAsHTML()}\" "
     if (floatingLabel && label) {
-      out << 'placeholder="" '
+      // Non-empty placeholder (single space) kept for compatibility with other glass CSS.
+      out << 'placeholder=" " '
     } else if (placeholder) {
       out << "placeholder=\"${placeholder.encodeAsHTML()}\" "
     }
@@ -215,8 +181,7 @@ class FormattedNumericFieldTagLib {
 
     out << '/>'
 
-    // ── Clear button ──────────────────────────────────────────────────────────
-    // Not rendered when disabled=true.
+    // ── Clear button (not rendered when disabled) ─────────────────────────────
     if (!disabled) {
       String placementAttr = autoPlacement ? '' : " data-tooltip-placement=\"${tooltipPlacement}\""
 
@@ -225,7 +190,6 @@ class FormattedNumericFieldTagLib {
       out << "data-tooltip-text=\"${tooltipText.encodeAsHTML()}\" "
       out << "onclick=\"glassFmtNumericClear(this,'${escapedId}_hidden')\">"
       out << '<i class="fa-solid fa-xmark" aria-hidden="true"></i>'
-      // Source span — always hidden; portal clone on <body> is what the user sees.
       out << "<span class=\"glass-tooltip\" aria-hidden=\"true\">${tooltipText.encodeAsHTML()}</span>"
       out << '</button>'
 
@@ -479,14 +443,9 @@ class FormattedNumericFieldTagLib {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Private: emit input-shell CSS once per page
-  //
-  // Tooltip tokens + portal rules are owned by GlassTooltipStylesTagLib and
-  // emitted via tooltipStylesTagLib.emitTooltipStylesOnce() at the top of
-  // formattedNumericField. This method only covers the input-shell CSS block,
-  // guarded by STYLES_EMITTED — the same key used by all other glass field
-  // taglibs, so the block is emitted exactly once per page regardless of
-  // which tag renders first.
+  // Shared input-shell CSS — emitted once per page under the key shared with
+  // the other glass field taglibs (so it may be emitted by THEM instead).
+  // The label rules below therefore no longer live here; see emitLabelStylesOnce().
   // ─────────────────────────────────────────────────────────────────────────
   private void emitSharedAssetsOnce() {
     if (pageScope[STYLES_EMITTED]) return
@@ -494,9 +453,6 @@ class FormattedNumericFieldTagLib {
 
     out << '''
 <style>
-/* ═══════════════════════════════════════════════════════════════════════════
-   Glass input design tokens
-   ═══════════════════════════════════════════════════════════════════════════ */
 :root {
   --glass-background          : rgba(255, 255, 255, 0.10);
   --glass-border      : rgba(255, 255, 255, 0.25);
@@ -519,9 +475,6 @@ class FormattedNumericFieldTagLib {
                         );
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   Layout
-   ═══════════════════════════════════════════════════════════════════════════ */
 .glass-form-group {
   position       : relative;
   display        : flex;
@@ -529,9 +482,6 @@ class FormattedNumericFieldTagLib {
   gap            : 4px;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   Input shell
-   ═══════════════════════════════════════════════════════════════════════════ */
 .input-glass {
   position               : relative;
   display                : flex;
@@ -571,9 +521,6 @@ class FormattedNumericFieldTagLib {
   color: var(--glass-placeholder);
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   Disabled state
-   ═══════════════════════════════════════════════════════════════════════════ */
 .input-glass.is-disabled {
   background           : var(--glass-dis-background);
   background-image     : var(--glass-dis-hatch);
@@ -596,9 +543,6 @@ class FormattedNumericFieldTagLib {
   display: none !important;
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   Clear button
-   ═══════════════════════════════════════════════════════════════════════════ */
 .clear-btn {
   position        : absolute;
   right           : 0.55rem;
@@ -638,33 +582,6 @@ class FormattedNumericFieldTagLib {
   transform    : translateY(-50%) scale(0.90);
 }
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   Floating label
-   ═══════════════════════════════════════════════════════════════════════════ */
-.floating-label {
-  position       : absolute;
-  left           : 1rem;
-  top            : 50%;
-  transform      : translateY(-50%);
-  color          : var(--glass-placeholder);
-  font-size      : 0.9375rem;
-  pointer-events : none;
-  transition     : top 180ms var(--tt-ease),
-                   font-size 180ms var(--tt-ease),
-                   color 180ms var(--tt-ease);
-  z-index        : 1;
-}
-.input-glass input.form-control:not(:placeholder-shown) ~ .floating-label,
-.input-glass input.form-control:focus                   ~ .floating-label {
-  top       : 0.3rem;
-  font-size : 0.7rem;
-  color     : var(--glass-accent);
-  transform : none;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   Helper text
-   ═══════════════════════════════════════════════════════════════════════════ */
 .glass-helper-text {
   font-size  : 0.75rem;
   color      : var(--glass-helper);
@@ -676,7 +593,66 @@ class FormattedNumericFieldTagLib {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Private: emit formatted-numeric JS once per page
+  // Floating-label CSS — scoped to .input-glass.fnf, own guard key, so it is
+  // emitted for THIS field type even when another glass taglib already emitted
+  // the shared block. !important on the layout properties makes the label state
+  // immune to a different taglib's .floating-label / :placeholder-shown rules.
+  // ─────────────────────────────────────────────────────────────────────────
+  private void emitLabelStylesOnce() {
+    if (pageScope[FMT_LABEL_STYLES_EMITTED]) return
+    pageScope[FMT_LABEL_STYLES_EMITTED] = true
+
+    out << '''
+<style id="glass-fmt-numeric-label-styles">
+.input-glass.fnf input.form-control {
+  padding-right : 2.6rem;
+  transition    : padding 180ms ease, color 200ms ease;
+}
+.input-glass.fnf.is-floated input.form-control {
+  padding-top    : 1.25rem !important;
+  padding-bottom : 0.45rem !important;
+}
+
+/* Resting state: label sits centred at full size and acts as the placeholder */
+.input-glass.fnf .floating-label {
+  position       : absolute !important;
+  left           : 1rem;
+  top            : 50% !important;
+  transform      : translateY(-50%) !important;
+  font-size      : 0.9375rem !important;
+  line-height    : 1.2;
+  color          : var(--glass-placeholder, rgba(200, 215, 255, 0.45)) !important;
+  pointer-events : none;
+  white-space    : nowrap;
+  max-width      : calc(100% - 3.6rem);
+  overflow       : hidden;
+  text-overflow  : ellipsis;
+  z-index        : 1;
+  transition     : top 180ms ease, font-size 180ms ease, color 180ms ease, transform 180ms ease;
+}
+
+/* Floated state: focused OR has text */
+.input-glass.fnf.is-floated .floating-label {
+  top       : 0.3rem !important;
+  transform : none !important;
+  font-size : 0.7rem !important;
+  color     : var(--glass-accent, #7eb8f7) !important;
+}
+
+.input-glass.fnf.is-disabled .floating-label {
+  color : var(--glass-dis-text, rgba(180, 190, 220, 0.38)) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .input-glass.fnf .floating-label,
+  .input-glass.fnf input.form-control { transition: none; }
+}
+</style>
+'''
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Formatted-numeric JS — once per page
   // ─────────────────────────────────────────────────────────────────────────
   private void emitFormattedNumericScriptOnce() {
     if (pageScope[FMT_SCRIPT_EMITTED]) return
@@ -687,6 +663,15 @@ class FormattedNumericFieldTagLib {
 (function () {
   'use strict';
 
+  /* ── Floating-label state: floated when focused OR the field has text ── */
+  function syncFloat(inp, focused) {
+    var shell = inp.closest ? inp.closest('.input-glass') : null;
+    if (!shell) return;
+    var isFocused = (typeof focused === 'boolean') ? focused : (document.activeElement === inp);
+    shell.classList.toggle('is-floated', isFocused || inp.value.length > 0);
+  }
+  window.glassFmtNumericSync = syncFloat;
+
   /* ── Core input handler ──────────────────────────────────────────────── */
   window.glassFmtNumericInput = function (inp, hiddenId) {
     var raw = inp.value.replace(/[^0-9]/g, '');
@@ -695,11 +680,11 @@ class FormattedNumericFieldTagLib {
     if (mx && raw && parseInt(raw, 10) > parseInt(mx, 10)) raw = mx;
     document.getElementById(hiddenId).value = raw;
     inp.value = raw ? parseInt(raw, 10).toLocaleString('en-US') : '';
+    syncFloat(inp);
     if (typeof toggleClearButton === 'function') toggleClearButton(inp);
   };
 
   /* ── Paste handler ───────────────────────────────────────────────────── */
-  // Defers to the next tick so the pasted text is in inp.value before we process it.
   window.glassFmtNumericPaste = function (event, hiddenId) {
     var inp = event.target;
     setTimeout(function () { glassFmtNumericInput(inp, hiddenId); }, 0);
@@ -713,23 +698,35 @@ class FormattedNumericFieldTagLib {
     inp.value = '';
     document.getElementById(hiddenId).value = '';
     inp.focus();
+    syncFloat(inp, true);
     if (typeof toggleClearButton === 'function') toggleClearButton(inp);
     inp.dispatchEvent(new Event('input', { bubbles: true }));
   };
 
-  /* ── DOMContentLoaded: sync pre-filled fields ────────────────────────── */
+  /* ── Delegated focus / blur: float on focus, drop back only if empty ─── */
+  document.addEventListener('focusin', function (e) {
+    var t = e.target;
+    if (t && t.matches && t.matches('.input-glass.fnf input[type="text"]')) syncFloat(t, true);
+  });
+  document.addEventListener('focusout', function (e) {
+    var t = e.target;
+    if (t && t.matches && t.matches('.input-glass.fnf input[type="text"]')) syncFloat(t, false);
+  });
+
+  /* ── DOMContentLoaded: sync pre-filled fields and label state ────────── */
   document.addEventListener('DOMContentLoaded', function () {
-    document.querySelectorAll('.input-glass input[type="text"][data-min]')
+    document.querySelectorAll('.input-glass.fnf input[type="text"]')
       .forEach(function (inp) {
-        if (!inp.value.trim()) return;
-        var container = inp.closest('.input-glass');
-        var formGroup = container ? container.closest('.glass-form-group') : null;
-        if (formGroup) formGroup.classList.add('has-content');
-        // Determine the hidden field id: visible input id + '_hidden'
-        var hiddenId = inp.id + '_hidden';
-        if (document.getElementById(hiddenId)) {
-          glassFmtNumericInput(inp, hiddenId);
+        if (inp.value.trim()) {
+          var container = inp.closest('.input-glass');
+          var formGroup = container ? container.closest('.glass-form-group') : null;
+          if (formGroup) formGroup.classList.add('has-content');
+          var hiddenId = inp.id + '_hidden';
+          if (document.getElementById(hiddenId)) {
+            glassFmtNumericInput(inp, hiddenId);
+          }
         }
+        syncFloat(inp);
       });
   });
 })();

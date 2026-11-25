@@ -9,6 +9,10 @@ class AdditionalSpouseDetails implements GormEntity<AdditionalSpouseDetails> {
   String salaryFor
   String workLocation
   String workingCountry
+  String currencyCode
+  String currencyName
+  String currencySymbol
+  String currencyFlag
 
   static belongsTo = [person: Person]
 
@@ -20,6 +24,10 @@ class AdditionalSpouseDetails implements GormEntity<AdditionalSpouseDetails> {
     salaryFor nullable: true, blank: true//inList: ["Per Anum", "Per Month", "Per Week", "Per Day", "Per Hour"]
     workLocation nullable: true, blank: true
     workingCountry nullable: true, blank: true
+    currencyCode nullable: true, blank: true
+    currencyName nullable: true, blank: true
+    currencySymbol nullable: true, blank: true
+    currencyFlag nullable: true, blank: true
   }
   static mapping = {
   }

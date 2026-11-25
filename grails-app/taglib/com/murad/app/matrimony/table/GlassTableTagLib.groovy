@@ -2,10 +2,43 @@ package com.murad.app.matrimony.table
 
 import com.murad.app.matrimony.GlassTooltipStylesTagLib
 import grails.gsp.TagLib
+import groovy.json.JsonOutput
+import org.springframework.http.HttpStatus
 
 /**
  * GlassTableTagLib  —  Cosmic glassmorphic table for Grails 6
  * Namespace : glass
+ *
+ * CHANGES in this version
+ *   - NEW: when the table runs out of rows (after a successful row click removed the last one
+ *     and no further rows can be loaded) and the headerHtml contains a glass:select, the
+ *     currently selected option is removed from that select, the next option is selected and a
+ *     'change' event is fired on the select (so the page reloads the table for the next option).
+ *       * ListTableTagLib fires gt:noMoreRows once the refill fetch returned nothing.
+ *       * A plain glass:table (no loader) prunes directly from gt:empty.
+ *       * Hooks / events:  table.gtPruneHeaderSelect()   gt:noMoreRows   gt:headerOptionRemoved
+ *                          (detail: {value, label})
+ *   - NEW attrs headerHtml / headerAlign: free-form HTML rendered in its own row directly
+ *     BENEATH the caption/search toolbar (same idea as glass:modernGlassCard's headerHtml).
+ *   - Row click is now an AJAX call (fetch, JSON request body, JSON response) instead of a
+ *     page navigation. Set rowAjax="false" to get the old navigation behaviour.
+ *   - The HTTP status of the response drives the feedback in the clicked row AND a glass alert:
+ *         HttpStatus.OK                    -> animated tick       + success alert, then the row is
+ *                                             removed from the table (rowRemove="false" keeps it)
+ *         HttpStatus.NOT_FOUND             -> animated error (X)  + error alert
+ *         HttpStatus.CONFLICT              -> animated error (X)  + error alert
+ *         HttpStatus.INTERNAL_SERVER_ERROR -> animated error (X)  + error alert
+ *         HttpStatus.UNPROCESSABLE_ENTITY  -> animated warning    + warning alert
+ *         anything else / network failure  -> animated error (X)  + error alert
+ *     Error / warning icons are removed again after ~2.6s so the row can be retried.
+ *   - After a row is removed the table fires two DOM events on the <table>:
+ *         gt:rowRemoved   detail: {id, response}
+ *         gt:empty        when no <tr> is left in the body (ListTableTagLib listens to it
+ *                         and fetches the next page of rows)
+ *   - The server answers with JSON; the alert text is taken from  message | error | errors[].
+ *   - Alerts come from GlassAlertTagLib (window.glassAlert). This tag emits the alert runtime
+ *     once per request via <glass:alertRuntime/>.
+ *   - NEW attrs: rowAjax, rowMethod, rowBody, rowRemove, removeDelay.
  *
  * ── Tags ─────────────────────────────────────────────────────────────────────
  *
@@ -14,74 +47,88 @@ import grails.gsp.TagLib
  *
  *  <glass:table
  *      cols             = "Col1, Col2, …"      REQUIRED — comma-separated headers
- *      [id]                                     auto-generated UUID if omitted
- *      [caption]                                plain text OR raw HTML string
- *      [captionStyle]                           inline CSS applied to the caption element
- *      [searchable      = "true|false"]         default true
- *      [rowCount        = "true|false"]         default true
- *      [emptyText]                              default "No records found"
+ *      [id] [caption] [captionStyle] [searchable] [rowCount] [emptyText]
  *
- *      ── Row-click navigation ──────────────────────────────────────────────
- *      [rowController]                          Grails controller name
- *      [rowAction]                              Grails action name
- *      [rowParams]                              Extra static params map, e.g. [ac:'an']
- *      [rowIdAttr       = "data-row-id"]        data-* attribute on <tr> whose value
- *                                               is forwarded as the "id" URL param
- *      [rowTickCol]                             0-based column index to replace with the
- *                                               tick SVG on selection (default: last col = -1)
+ *      ── Header row (beneath the caption / search toolbar) ─────────────────
+ *      [headerHtml]                             Raw HTML (toggles, filter buttons, chips, ...).
+ *                                               Compose it with <g:set> and pass the variable,
+ *                                               exactly like glass:modernGlassCard's headerHtml.
+ *                                               Emitted UNESCAPED - never put raw user input in it.
+ *      [headerAlign     = "start"]              start | center | end | between
  *
- *      ── Toolbar nav buttons (rendered left of caption) ────────────────────
- *      [homeController] [homeAction]
- *      [homeParams]                             Extra params map for home link
- *      [homeIcon]                               FA icon class  (default fa-solid fa-house)
- *      [homeTooltip]                            Tooltip on home button (default: "Go back to main page")
+ *      [headerData]                             Map of data shown IN the header HTML elements. Mark an
+ *                                               element with data-gt-bind="key" (dotted paths ok, e.g.
+ *                                               "user.name") and it is filled client-side:
+ *                                                 <select>            list -> <option>s (items: "text" or
+ *                                                                     {value,label[,selected]}); scalar -> value
+ *                                                 checkbox / radio    checked state
+ *                                                 <input>/<textarea>  value
+ *                                                 <ul>/<ol>/other     list -> <li> / chip <span>s
+ *                                                 anything else       textContent (always escaped)
+ *                                               data-gt-bind-attr="title:tipKey,placeholder:phKey" binds
+ *                                               attributes. Options marked data-gt-static are kept when a
+ *                                               <select> is rebuilt. Use plain Maps / Lists / scalars.
+ *                                               A header reload response that is a JSON OBJECT with a
+ *                                               "headerData" key updates the bound elements too (only the
+ *                                               keys sent; inputs the user is typing in stay untouched).
+ *                                               Hooks: table.gtSetHeaderData(map)  table.gtHeaderData
  *
- *      [backController] [backAction]
- *      [backParams]                             Extra params map for back link
- *      [backIcon]                               FA icon class  (default fa-solid fa-chevron-left)
- *      [backTooltip]                            Tooltip on back button (default: "Go to previous page")
+ *      ── Header-driven data loading (AJAX, JSON in / JSON out) ─────────────
+ *      [headerController] [headerAction]        slot-aware endpoint, built with createLink:
+ *                                               /u/$slot/$controller/$action?queryparams  (currentSlot set)
+ *                                               /$controller/$action?queryparams          (no currentSlot)
+ *      [headerParams]                           Map of static params -> query string of that URL
+ *      [headerMethod    = "POST"]               POST | PUT | PATCH | GET. POST/PUT/PATCH send the control
+ *                                               values as a JSON body; GET appends them to the query string.
+ *      [headerLoad      = "false"]              true -> also load once when the page is ready
+ *      The values of every named control (input / select / textarea, or any element with
+ *      data-gt-param="name") inside the header row are collected and sent. They are sent
+ *      automatically when a control changes (text inputs: debounced). Skip a control with
+ *      data-gt-no-reload. A plain button / link / chip can also trigger a reload by carrying
+ *      data-gt-param="name" data-gt-value="x" (it gets class gt-active, siblings with the same
+ *      name lose it) or just data-gt-reload.
+ *      Every header-triggered reload ALWAYS sends offset=0 (paging restarts from the first page)
+ *      and fires gt:headerReload on the table before the request. The response must be a JSON array of items (or an object containing
+ *      one); the body rows are REPLACED using `fields`, `idField` and the badge attributes.
+ *      Client hooks:  table.gtReload(extraParams)  table.gtHeaderValues()  table.gtReplaceData(items)
+ *      DOM event:     gt:dataLoaded  detail: {items, params}
+ *
+ *      ── First-load data ───────────────────────────────────────────────────
+ *      [data] [fields] [idField="id"] [badgeText] [badgeVariant] [badgeDot]
+ *
+ *      ── Row-click (AJAX) ──────────────────────────────────────────────────
+ *      [rowController] [rowAction]              slot-aware endpoint
+ *      [rowParams]                              static params -> query string
+ *      [rowMethod       = "POST"]               POST | PUT | PATCH | DELETE | GET
+ *                                               (GET sends ?id=…, others send a JSON body)
+ *      [rowBody]                                Map of extra static JSON body fields
+ *      [rowIdAttr       = "data-row-id"]        attribute on <tr>; its value is sent as "id"
+ *      [rowTickCol]                             0-based column replaced by the status icon
+ *                                               (default: last column = -1)
+ *      [rowAjax         = "true|false"]         false -> legacy navigation to ...?id=…
+ *      [rowRemove       = "true|false"]         remove the row after HTTP 200 (default true)
+ *      [removeDelay     = "950"]                ms the tick stays visible before removal
+ *
+ *      ── Toolbar nav buttons ───────────────────────────────────────────────
+ *      [homeController] [homeAction] [homeParams] [homeIcon] [homeTooltip]
+ *      [backController] [backAction] [backParams] [backIcon] [backTooltip]
  *  >
- *    <tr data-row-id="${item.id}">…</tr>   <- rows go here
+ *    <tr data-row-id="${item.id}">…</tr>
  *  </glass:table>
  *
  *  <glass:tableSearch tableId="…" [placeholder]/>
- *
  *  <glass:tableBadge text="…" [variant] [dot]/>
- *    variant: success | danger | warning | info | violet | blue | default
- *
  *  <glass:tableActions>…</glass:tableActions>
- *
- *  <glass:tableActionBtn
- *      icon        = "fa-solid fa-pencil"
- *      [controller] [action] [params]           generates href via buildLink (slot-aware)
- *      [href]                                   explicit href (overrides controller/action; app-relative
- *                                               paths starting with '/' are slot-prefixed too)
- *      [onclick]
- *      [variant]                                danger | success | info  (default: violet accent)
- *      [title]/>
+ *  <glass:tableActionBtn icon controller action params href onclick variant title/>
  *
  * ── Slot-aware URLs ──────────────────────────────────────────────────────────
- *   Every app-relative URL (home, back, action buttons incl. explicit href, and
- *   row-click navigation) honours the request attribute "currentSlot":
- *     currentSlot present  ->  /u/$slot/$controller/$action?urlparams
- *     currentSlot absent   ->  /$controller/$action?urlparams
- *   (context path is preserved in front of either form)
- *
- * ── Button states ────────────────────────────────────────────────────────────
- *   Nav and action buttons share one accent colour per variant (--gt-accent).
- *   On hover / focus / active the border AND the icon take exactly the same
- *   colour (--gt-edge), so they always match:
- *     hover   — mouse over
- *     focus   — keyboard focus or after a click (plus a focus ring on keyboard focus)
- *     active  — mouse button held down: button presses in, stronger glow
+ *   currentSlot request attribute present ->  /u/$slot/$controller/$action?queryparams
+ *   currentSlot absent                    ->  /$controller/$action?queryparams
+ *   (context path preserved). Used for home, back, action buttons, the row AJAX endpoint
+ *   and (ListTableTagLib) the load-more endpoint.
  *
  * ── Background expected on the layout body ───────────────────────────────────
- *   background:
- *     radial-gradient(ellipse at 15% 25%, #3a6fff 0%, transparent 55%),
- *     radial-gradient(ellipse at 85% 10%, #a855f7 0%, transparent 50%),
- *     radial-gradient(ellipse at 70% 80%, #06b6d4 0%, transparent 55%),
- *     radial-gradient(ellipse at 10% 85%, #ec4899 0%, transparent 45%),
- *     #0d1230;
+ *   radial gradients #3a6fff / #a855f7 / #06b6d4 / #ec4899 over #0d1230
  */
 @TagLib
 @SuppressWarnings(['unused'])
@@ -89,24 +136,36 @@ class GlassTableTagLib {
 
   static namespace = 'glass'
 
+  /** status code -> feedback kind (success = tick, error = X icon, warning = triangle icon). */
+  private static final Map<Integer, String> STATUS_KIND = [
+    (HttpStatus.OK.value())                   : 'success',
+    (HttpStatus.NOT_FOUND.value())            : 'error',
+    (HttpStatus.CONFLICT.value())             : 'error',
+    (HttpStatus.INTERNAL_SERVER_ERROR.value()): 'error',
+    (HttpStatus.UNPROCESSABLE_ENTITY.value()) : 'warning'
+  ]
+
+  /** Fallback alert text when the JSON response carries none. */
+  private static final Map<Integer, String> STATUS_MESSAGE = [
+    (HttpStatus.OK.value())                   : 'Done.',
+    (HttpStatus.NOT_FOUND.value())            : 'The record could not be found.',
+    (HttpStatus.CONFLICT.value())             : 'The record was changed or already exists.',
+    (HttpStatus.INTERNAL_SERVER_ERROR.value()): 'Something went wrong on the server.',
+    (HttpStatus.UNPROCESSABLE_ENTITY.value()) : 'Please check the submitted data.'
+  ]
+
+  private static final List<String> ROW_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE', 'GET']
+
+  private static final List<String> HEADER_METHODS = ['POST', 'PUT', 'PATCH', 'GET']
+
+  private static final List<String> HEADER_ALIGNS = ['start', 'center', 'end', 'between']
+
   // ── Tooltip-styles delegate ───────────────────────────────────────────────
-  // Property injection of cross-namespace taglibs is unreliable in Grails —
-  // the bean may not be wired by the time the taglib is first used.
-  // grailsApplication is inherited from WebAttributes and is always available;
-  // we look up GlassTooltipStylesTagLib lazily via the Spring context.
-  // Current buttons use plain HTML title attributes; call
-  // tooltipStylesTagLib.emitTooltipStylesOnce() before emitting any
-  // glass-tooltip markup if that changes.
   private GlassTooltipStylesTagLib getTooltipStylesTagLib() {
     grailsApplication.mainContext.getBean(GlassTooltipStylesTagLib)
   }
 
   // ── Slot-aware link building ─────────────────────────────────────────────
-  // Every link in this taglib (home, back, action buttons incl. explicit href,
-  // row-click navigation) goes through buildLink / applySlot, so they all behave
-  // identically:
-  //   request attribute "currentSlot" present -> {ctx}/u/{slot}/{controller}/{action}?params
-  //   absent / blank                          -> {ctx}/{controller}/{action}?params
 
   /** Request attribute "currentSlot" as a trimmed String, or null when absent/blank. */
   private String resolveCurrentSlot() {
@@ -116,6 +175,11 @@ class GlassTableTagLib {
 
   private static String encodeSegment(String value) {
     return URLEncoder.encode(value, 'UTF-8').replace('+', '%20')
+  }
+
+  /** JSON-encode a value for safe inlining inside <script>. */
+  protected static String jsLiteral(Object value) {
+    return JsonOutput.toJson(value).replace('</', '<\\/')
   }
 
   /**
@@ -138,9 +202,8 @@ class GlassTableTagLib {
   }
 
   /**
-   * createLink-based link builder. g.createLink produces the standard
-   * /{controller}/{action}?params URL (hyphenation, encoding, context path);
-   * applySlot then adds /u/{slot} when currentSlot is available.
+   * createLink-based link builder: /{controller}/{action}?params, then /u/{slot} is added
+   * when currentSlot is available.
    */
   String buildLink(Map linkAttrs) {
     try {
@@ -150,7 +213,74 @@ class GlassTableTagLib {
     }
   }
 
-  // ── rest of the class ────────────────────────────────────────────────────
+  // ── First-load data rows ─────────────────────────────────────────────────
+
+  Object readProp(Object item, String name) {
+    if (item == null) {
+      return null
+    }
+    if (item instanceof Map) {
+      return ((Map) item).get(name)
+    }
+    if (item instanceof CharSequence || item instanceof Number || item instanceof Boolean) {
+      return item
+    }
+    try {
+      return item."${name}"
+    } catch (MissingPropertyException ignored) {
+      return null
+    }
+  }
+
+  String buildBadgeHtml(Map attrs) {
+    if (!attrs.badgeText) {
+      return ''
+    }
+    String variant = (attrs.badgeVariant ?: 'violet').toString().encodeAsHTML()
+    String dot = attrs.badgeDot?.toString() != 'false' ? '<span class="gt-badge-dot"></span>' : ''
+    return '<span class="gt-badge gt-badge-' + variant + '">' + dot +
+      attrs.badgeText.toString().encodeAsHTML() + '</span>'
+  }
+
+  String renderDataRows(Map attrs) {
+    def data = attrs.data
+    if (data == null) {
+      return ''
+    }
+    Collection items = null
+    if (data instanceof Collection) {
+      items = (Collection) data
+    } else if (data instanceof Object[]) {
+      items = Arrays.asList((Object[]) data)
+    }
+    if (items == null) {
+      return '<!-- glass:table: "data" must be a List -->'
+    }
+    List<String> fields = (attrs.fields ?: '').toString().split(',').collect { it.trim() }.findAll { it }
+    if (!fields) {
+      return '<!-- glass:table: "fields" is required when "data" is used -->'
+    }
+    String idField = (attrs.idField ?: 'id').toString()
+    String rowIdAttr = (attrs.rowIdAttr ?: 'data-row-id').toString().encodeAsHTML()
+    String badge = buildBadgeHtml(attrs)
+
+    StringBuilder sb = new StringBuilder()
+    items.each { item ->
+      Object id = readProp(item, idField)
+      sb << '<tr ' << rowIdAttr << '="' << (id == null ? '' : id.toString().encodeAsHTML()) << '">'
+      fields.each { f ->
+        Object v = readProp(item, f)
+        sb << '<td>' << (v == null ? '' : v.toString().encodeAsHTML()) << '</td>'
+      }
+      if (badge) {
+        sb << '<td>' << badge << '</td>'
+      }
+      sb << '</tr>'
+    }
+    return sb.toString()
+  }
+
+  // ── Styles ───────────────────────────────────────────────────────────────
 
   def tableStyles = { attrs ->
     out << '''<style>
@@ -219,6 +349,30 @@ class GlassTableTagLib {
     display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
   }
 
+  /* ── Header row (headerHtml) — sits directly under the toolbar ─────── */
+  .gt-wrapper .gt-header-row {
+    position: relative; z-index: 2;
+    padding: 14px 24px 0;
+    display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
+    justify-content: flex-start;
+  }
+  .gt-wrapper .gt-header-row.gt-header-center  { justify-content: center; }
+  .gt-wrapper .gt-header-row.gt-header-end     { justify-content: flex-end; }
+  .gt-wrapper .gt-header-row.gt-header-between { justify-content: space-between; }
+  .gt-wrapper .gt-header-chip {
+    display: inline-flex; align-items: center; padding: 3px 11px; border-radius: 999px;
+    font-size: 11px; color: var(--gt-text);
+    background: rgba(167,139,250,.10); border: 1px solid rgba(167,139,250,.28);
+  }
+  .gt-wrapper .gt-header-row [data-gt-param].gt-active {
+    border-color: var(--gt-violet) !important; color: var(--gt-violet) !important;
+  }
+  .gt-wrapper .gt-scroll.gt-loading { opacity: .55; pointer-events: none; transition: opacity .2s; }
+  @media (max-width: 575.98px) {
+    .gt-wrapper .gt-toolbar,
+    .gt-wrapper .gt-header-row { padding-left: 14px; padding-right: 14px; }
+  }
+
   /* ── Buttons (toolbar nav + row actions) ─────────────────────
      --gt-accent is an "r,g,b" triplet. --gt-edge is the single colour
      used for BOTH the border and the icon in hover/focus/active, so
@@ -249,7 +403,6 @@ class GlassTableTagLib {
     transition: color .2s, filter .2s;
   }
 
-  /* hover + focus + keyboard focus: border and icon share --gt-edge */
   .gt-nav-btn:hover,
   .gt-nav-btn:focus,
   .gt-nav-btn:focus-visible,
@@ -274,14 +427,12 @@ class GlassTableTagLib {
             drop-shadow(0 0 9px rgba(var(--gt-accent), .55));
   }
 
-  /* keyboard focus ring */
   .gt-nav-btn:focus-visible,
   .gt-wrapper .gt-action-btn:focus-visible {
     outline: 2px solid var(--gt-edge);
     outline-offset: 2px;
   }
 
-  /* active: mouse button held down — button presses in, icon keeps the border colour */
   .gt-nav-btn:active,
   .gt-wrapper .gt-action-btn:active {
     background: rgba(var(--gt-accent), .34);
@@ -298,7 +449,6 @@ class GlassTableTagLib {
             drop-shadow(0 0 12px rgba(var(--gt-accent), .85));
   }
 
-  /* links inside cells (incl. :visited) must not override the button colours */
   .gt-wrapper .gt-table tbody td a.gt-action-btn,
   .gt-wrapper .gt-table tbody td a.gt-action-btn:visited {
     color: rgba(160,180,255,.70) !important;
@@ -439,6 +589,27 @@ class GlassTableTagLib {
   .gt-wrapper .gt-table tbody tr.gt-row-selected:hover td {
     background-color: rgba(167,139,250,0.20) !important;
   }
+
+  /* ── Row feedback states (AJAX row click) ────────────────── */
+  .gt-wrapper .gt-table tbody tr.gt-row-error td,
+  .gt-wrapper .gt-table tbody tr.gt-row-error:hover td {
+    background-color: rgba(255,122,192,0.14) !important;
+  }
+  .gt-wrapper .gt-table tbody tr.gt-row-warning td,
+  .gt-wrapper .gt-table tbody tr.gt-row-warning:hover td {
+    background-color: rgba(251,191,36,0.14) !important;
+  }
+  .gt-wrapper .gt-table tbody tr.gt-row-busy { cursor: progress; opacity: .7; }
+  .gt-wrapper .gt-table tbody tr.gt-row-removing {
+    animation: gtRowOut .4s ease forwards !important;
+    pointer-events: none;
+  }
+  @keyframes gtRowOut {
+    from { opacity: 1; transform: translateX(0); }
+    to   { opacity: 0; transform: translateX(28px); }
+  }
+
+  /* ── Animated status icons (tick / error / warning) ──────── */
   .gt-tick-svg {
     width: 22px; height: 22px;
     display: inline-block; vertical-align: middle;
@@ -456,6 +627,43 @@ class GlassTableTagLib {
   }
   @keyframes gtTickCircle { to { stroke-dashoffset: 0; } }
   @keyframes gtTickCheck  { to { stroke-dashoffset: 0; } }
+
+  .gt-tick-svg.gt-icon-error   { filter: drop-shadow(0 0 4px rgba(255,122,192,.85)); }
+  .gt-tick-svg.gt-icon-warning { filter: drop-shadow(0 0 4px rgba(251,191,36,.85)); }
+
+  .gt-tick-svg .gt-err-circle {
+    stroke-dasharray: 188.5;
+    stroke-dashoffset: 188.5;
+    animation: gtTickCircle .4s ease forwards;
+  }
+  .gt-tick-svg .gt-err-line {
+    stroke-dasharray: 30;
+    stroke-dashoffset: 30;
+    animation: gtTickCheck .25s ease forwards;
+  }
+  .gt-tick-svg .gt-err-line-1 { animation-delay: .35s; }
+  .gt-tick-svg .gt-err-line-2 { animation-delay: .55s; }
+
+  .gt-tick-svg .gt-warn-tri {
+    stroke-dasharray: 180;
+    stroke-dashoffset: 180;
+    animation: gtTickCircle .5s ease forwards;
+  }
+  .gt-tick-svg .gt-warn-bar {
+    stroke-dasharray: 20;
+    stroke-dashoffset: 20;
+    animation: gtTickCheck .2s ease .45s forwards;
+  }
+  .gt-tick-svg .gt-warn-dot {
+    opacity: 0;
+    transform-box: fill-box; transform-origin: center;
+    animation: gtIconPop .2s ease .65s forwards;
+  }
+  @keyframes gtIconPop {
+    from { opacity: 0; transform: scale(.2); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+
   .gt-wrapper .gt-table tbody td {
     padding: 13px 18px;
     border-bottom: 1px solid rgba(167,139,250,.08);
@@ -515,7 +723,14 @@ class GlassTableTagLib {
   </style>'''
   }
 
-  def table = { attrs, body ->
+  /** The <glass:table> tag. Delegates to renderTable so subclasses can reuse it. */
+  def table = { attrs, body -> renderTable(attrs, body) }
+
+  /**
+   * Renders the complete glass table (toolbar, search, header row, sortable header, body,
+   * footer, styles and behaviour script). Protected so ListTableTagLib can call it.
+   */
+  protected void renderTable(Map attrs, Closure body) {
     def tableId = attrs.id ?: "gt-${UUID.randomUUID().toString().take(8)}"
     def cols = (attrs.cols ?: '').toString().split(',').collect { it.trim() }
     def caption = attrs.caption
@@ -524,24 +739,79 @@ class GlassTableTagLib {
     def showCount = attrs.rowCount?.toString() != 'false'
     def emptyText = attrs.emptyText ?: 'No records found'
 
+    // Free-form HTML row beneath the caption/search toolbar (same idea as modernGlassCard's headerHtml)
+    String headerHtml = attrs.headerHtml?.toString()?.trim() ?: ''
+    String headerAlign = (attrs.headerAlign ?: 'start').toString().trim().toLowerCase()
+    if (!(headerAlign in HEADER_ALIGNS)) {
+      headerAlign = 'start'
+    }
+
+    // Header-driven data loading: slot-aware endpoint built from headerController / headerAction / headerParams
+    def headerController = attrs.headerController
+    def headerAction = attrs.headerAction
+    Map headerParams = [:]
+    if (attrs.headerParams instanceof Map) {
+      ((Map) attrs.headerParams).each { k, v ->
+        if (v != null && v.toString().trim()) {
+          headerParams[k] = v
+        }
+      }
+    }
+    boolean hasHeaderLoad = headerController && headerAction
+    String headerMethod = (attrs.headerMethod ?: 'POST').toString().trim().toUpperCase()
+    if (!(headerMethod in HEADER_METHODS)) {
+      headerMethod = 'POST'
+    }
+    boolean headerLoad = attrs.headerLoad?.toString() == 'true'
+    String headerUrl = ''
+    if (hasHeaderLoad) {
+      def hm = [controller: headerController, action: headerAction]
+      if (headerParams) {
+        hm.params = headerParams
+      }
+      headerUrl = buildLink(hm)
+    }
+    List<String> dataFields = (attrs.fields ?: '').toString().split(',').collect { it.trim() }.findAll { it }
+    String dataIdField = (attrs.idField ?: 'id').toString()
+    String dataBadgeHtml = buildBadgeHtml(attrs)
+    // headerData: values shown inside the header HTML (elements with data-gt-bind="key")
+    String headerDataJson = '{}'
+    if (attrs.headerData instanceof Map) {
+      try {
+        headerDataJson = jsLiteral(attrs.headerData)
+      } catch (Exception ex) {
+        headerDataJson = '{}'
+        log.error('glass:table headerData could not be serialised to JSON - use plain Maps/Lists/scalars', ex)
+      }
+    }
+
     def rowController = attrs.rowController
     def rowAction = attrs.rowAction
     def rowParams = attrs.rowParams instanceof Map ? attrs.rowParams : [:]
+    def rowBody = attrs.rowBody instanceof Map ? attrs.rowBody : [:]
     def rowIdAttr = (attrs.rowIdAttr ?: 'data-row-id').toString()
     def rowTickCol = attrs.rowTickCol != null ? attrs.rowTickCol.toString() : '-1'
     boolean hasRowNav = rowController && rowAction
+    boolean rowAjax = attrs.rowAjax?.toString() != 'false'
+    boolean rowRemove = attrs.rowRemove?.toString() != 'false'
+    String rowMethod = (attrs.rowMethod ?: 'POST').toString().toUpperCase()
+    if (!(rowMethod in ROW_METHODS)) {
+      rowMethod = 'POST'
+    }
+    String removeDelayStr = (attrs.removeDelay ?: '950').toString().trim()
+    int removeDelay = removeDelayStr.isInteger() ? removeDelayStr.toInteger() : 950
 
-    String rowBaseUrl = ''
+    // Slot-aware endpoint: /u/$slot/$controller/$action?queryparams  or  /$controller/$action?queryparams
+    String rowUrl = ''
     if (hasRowNav) {
       def linkMap = [controller: rowController, action: rowAction]
       if (rowParams) {
         linkMap.params = rowParams
       }
-      String built = buildLink(linkMap)
-      String sep = built.contains('?') ? '&' : '?'
-      rowBaseUrl = built + sep + 'id='
+      rowUrl = buildLink(linkMap)
     }
-    String rowBaseUrlJs = rowBaseUrl.replace('\\', '\\\\').replace("'", "\\'")
+    // legacy navigation target (rowAjax="false")
+    String rowNavBase = rowUrl ? (rowUrl + (rowUrl.contains('?') ? '&' : '?') + 'id=') : ''
 
     def homeController = attrs.homeController
     def homeAction = attrs.homeAction
@@ -569,6 +839,16 @@ class GlassTableTagLib {
         lm.params = backParams
       }
       backUrl = buildLink(lm)
+    }
+
+    // Alert runtime (window.glassAlert). Emitted once per request. If the tag cannot be
+    // resolved here, put <glass:alertRuntime/> in your layout instead.
+    if (hasRowNav && rowAjax) {
+      try {
+        out << glass.alertRuntime()
+      } catch (ignored) {
+        // JS side checks for window.glassAlert before using it
+      }
     }
 
     out << '<div class="gt-wrapper">'
@@ -600,11 +880,18 @@ class GlassTableTagLib {
       out << '</div>'
     }
 
+    // ── Header row: free-form HTML, directly beneath the caption/search row ──
+    if (headerHtml) {
+      out << '<div class="gt-header-row gt-header-' + headerAlign + '">'
+      out << headerHtml
+      out << '</div>'
+    }
+
     out << '<div class="gt-scroll"><table class="gt-table" id="' + tableId + '"><thead><tr>'
     cols.each { col ->
       out << '<th><span class="gt-th-inner">' + col.encodeAsHTML() + '<span class="gt-sort-icon"><span></span><span></span></span></span></th>'
     }
-    out << '</tr></thead><tbody>' + body() + '</tbody></table>'
+    out << '</tr></thead><tbody>' + renderDataRows(attrs) + (body ? body() : '') + '</tbody></table>'
     out << '<div class="gt-empty" id="' + tableId + '-empty"><i class="fa-solid fa-magnifying-glass"></i>' + emptyText.encodeAsHTML() + '</div>'
     out << '</div>'
 
@@ -647,14 +934,33 @@ class GlassTableTagLib {
     out << '  if (!tbl) return;'
 
     out << '''
+    // tbl.gtLoading is set by ListTableTagLib while it fetches a page, so the
+    // "no records" state does not flash between "last row removed" and "new rows arrived".
     function updateState() {
       var visible = tbl.querySelectorAll('tbody tr:not(.gt-hidden)').length;
       var total   = tbl.querySelectorAll('tbody tr').length;
       if (cnt)   cnt.textContent = visible === 0 ? '0 rows' : visible + ' of ' + total + ' rows';
-      if (empty) empty.style.display = visible === 0 ? 'block' : 'none';
+      if (empty) empty.style.display = (visible === 0 && !tbl.gtLoading) ? 'block' : 'none';
     }
 
     var sortState = { col: -1, asc: true };
+
+    function applySort() {
+      if (sortState.col < 0) return;
+      var ci  = sortState.col;
+      var asc = sortState.asc;
+      var tbody = tbl.querySelector('tbody');
+      var rows  = Array.from(tbody.querySelectorAll('tr'));
+      rows.sort(function (a, b) {
+        var av = (a.cells[ci] ? a.cells[ci].innerText : '').trim().toLowerCase();
+        var bv = (b.cells[ci] ? b.cells[ci].innerText : '').trim().toLowerCase();
+        var an = parseFloat(av.replace(/,/g, '')), bn = parseFloat(bv.replace(/,/g, ''));
+        if (!isNaN(an) && !isNaN(bn)) return asc ? an - bn : bn - an;
+        return asc ? av.localeCompare(bv) : bv.localeCompare(av);
+      });
+      rows.forEach(function (r) { tbody.appendChild(r); });
+    }
+
     tbl.querySelectorAll('thead th').forEach(function (th, ci) {
       th.addEventListener('click', function () {
         var asc = sortState.col === ci ? !sortState.asc : true;
@@ -663,22 +969,11 @@ class GlassTableTagLib {
           h.classList.remove('gt-sorted', 'gt-sorted-asc', 'gt-sorted-desc');
         });
         th.classList.add('gt-sorted', asc ? 'gt-sorted-asc' : 'gt-sorted-desc');
-        var tbody = tbl.querySelector('tbody');
-        var rows  = Array.from(tbody.querySelectorAll('tr'));
-        rows.sort(function (a, b) {
-          var av = (a.cells[ci] ? a.cells[ci].innerText : '').trim().toLowerCase();
-          var bv = (b.cells[ci] ? b.cells[ci].innerText : '').trim().toLowerCase();
-          var an = parseFloat(av.replace(/,/g, '')), bn = parseFloat(bv.replace(/,/g, ''));
-          if (!isNaN(an) && !isNaN(bn)) return asc ? an - bn : bn - an;
-          return asc ? av.localeCompare(bv) : bv.localeCompare(av);
-        });
-        rows.forEach(function (r) { tbody.appendChild(r); });
+        applySort();
         updateState();
       });
     });
 
-    // Re-applies the current search text to every row, then refreshes the footer.
-    // Also called by ListTableTagLib after infinite-scroll rows are appended.
     function applyFilter() {
       var q = srch ? srch.value.toLowerCase().trim() : '';
       tbl.querySelectorAll('tbody tr').forEach(function (r) {
@@ -691,72 +986,512 @@ class GlassTableTagLib {
       srch.addEventListener('input', applyFilter);
     }
 
-    function drawTick(row, tickColIdx) {
-      row.classList.add('gt-row-selected');
+    // ── Animated status icons ────────────────────────────────────────────
+    var SVG_NS = 'http://www.w3.org/2000/svg';
+    var ICON_COLOR = { success: '#34d399', error: '#ff7ac0', warning: '#fbbf24' };
+    var ICON_LABEL = { success: 'Success', error: 'Error', warning: 'Warning' };
+    var ROW_STATE_CLASS = { success: 'gt-row-selected', error: 'gt-row-error', warning: 'gt-row-warning' };
+
+    function svgEl(name, attrs) {
+      var e = document.createElementNS(SVG_NS, name);
+      Object.keys(attrs).forEach(function (k) { e.setAttribute(k, attrs[k]); });
+      return e;
+    }
+
+    function buildIcon(kind) {
+      var color = ICON_COLOR[kind];
+      var svg = svgEl('svg', {
+        'viewBox': '0 0 75.2 75.2',
+        'class': 'gt-tick-svg gt-icon-' + kind,
+        'aria-label': ICON_LABEL[kind]
+      });
+      var stroke = { 'fill': 'none', 'stroke': color, 'stroke-width': '3', 'stroke-miterlimit': '10' };
+      function withStroke(extra) {
+        var o = {};
+        Object.keys(stroke).forEach(function (k) { o[k] = stroke[k]; });
+        Object.keys(extra).forEach(function (k) { o[k] = extra[k]; });
+        return o;
+      }
+      if (kind === 'success') {
+        svg.appendChild(svgEl('circle', withStroke({ 'class': 'gt-tick-circle', 'cx': '35.1', 'cy': '35.1', 'r': '30.0' })));
+        svg.appendChild(svgEl('polyline', withStroke({ 'class': 'gt-tick-check', 'stroke-linecap': 'round', 'points': '20,37 30,47 55,22' })));
+      } else if (kind === 'warning') {
+        svg.appendChild(svgEl('polygon', withStroke({ 'class': 'gt-warn-tri', 'stroke-linejoin': 'round', 'points': '35.1,8 64,58 6.2,58' })));
+        svg.appendChild(svgEl('line', withStroke({ 'class': 'gt-warn-bar', 'stroke-linecap': 'round', 'x1': '35.1', 'y1': '25', 'x2': '35.1', 'y2': '42' })));
+        svg.appendChild(svgEl('circle', { 'class': 'gt-warn-dot', 'cx': '35.1', 'cy': '50', 'r': '2.6', 'fill': color }));
+      } else {
+        svg.appendChild(svgEl('circle', withStroke({ 'class': 'gt-err-circle', 'cx': '35.1', 'cy': '35.1', 'r': '30.0' })));
+        svg.appendChild(svgEl('line', withStroke({ 'class': 'gt-err-line gt-err-line-1', 'stroke-linecap': 'round', 'x1': '25', 'y1': '25', 'x2': '45.2', 'y2': '45.2' })));
+        svg.appendChild(svgEl('line', withStroke({ 'class': 'gt-err-line gt-err-line-2', 'stroke-linecap': 'round', 'x1': '45.2', 'y1': '25', 'x2': '25', 'y2': '45.2' })));
+      }
+      return svg;
+    }
+
+    function clearRowState(row) {
+      row.classList.remove('gt-row-selected', 'gt-row-error', 'gt-row-warning');
+    }
+
+    // kind: 'success' (tick) | 'error' (X) | 'warning' (triangle)
+    function drawIcon(row, tickColIdx, kind) {
+      clearRowState(row);
+      row.classList.add(ROW_STATE_CLASS[kind] || ROW_STATE_CLASS.error);
       var colIndex = (tickColIdx >= 0) ? tickColIdx : (row.cells.length - 1);
       var cell = row.cells[colIndex];
       if (!cell) return;
+      if (!row._gtSaved) row._gtSaved = { cell: cell, html: cell.innerHTML };
       cell.innerHTML = '';
-      var NS      = 'http://www.w3.org/2000/svg';
-      var svg     = document.createElementNS(NS, 'svg');
-      svg.setAttribute('viewBox', '0 0 75.2 75.2');
-      svg.setAttribute('class', 'gt-tick-svg');
-      svg.setAttribute('aria-label', 'Selected');
-      var circle  = document.createElementNS(NS, 'circle');
-      circle.setAttribute('class', 'gt-tick-circle');
-      circle.setAttribute('fill', 'none');
-      circle.setAttribute('stroke', '#34d399');
-      circle.setAttribute('stroke-width', '3');
-      circle.setAttribute('stroke-miterlimit', '10');
-      circle.setAttribute('cx', '35.1');
-      circle.setAttribute('cy', '35.1');
-      circle.setAttribute('r', '30.0');
-      var polyline = document.createElementNS(NS, 'polyline');
-      polyline.setAttribute('class', 'gt-tick-check');
-      polyline.setAttribute('fill', 'none');
-      polyline.setAttribute('stroke', '#34d399');
-      polyline.setAttribute('stroke-width', '3');
-      polyline.setAttribute('stroke-linecap', 'round');
-      polyline.setAttribute('stroke-miterlimit', '10');
-      polyline.setAttribute('points', '20,37 30,47 55,22');
-      svg.appendChild(circle);
-      svg.appendChild(polyline);
-      cell.appendChild(svg);
+      cell.appendChild(buildIcon(ICON_COLOR[kind] ? kind : 'error'));
+    }
+
+    function drawTick(row, tickColIdx) { drawIcon(row, tickColIdx, 'success'); }
+
+    function restoreRow(row) {
+      clearRowState(row);
+      if (row._gtSaved) {
+        row._gtSaved.cell.innerHTML = row._gtSaved.html;
+        row._gtSaved = null;
+      }
     }
   '''
 
-    out << "  var ROW_BASE_URL = '" + rowBaseUrlJs + "';"
-    out << "  var ROW_ID_ATTR  = '" + rowIdAttr.encodeAsHTML() + "';"
+    out << "  var ROW_URL      = " + jsLiteral(rowUrl) + ";"
+    out << "  var ROW_NAV_BASE = " + jsLiteral(rowNavBase) + ";"
+    out << "  var ROW_METHOD   = " + jsLiteral(rowMethod) + ";"
+    out << "  var ROW_BODY     = " + jsLiteral(rowBody) + ";"
+    out << "  var ROW_ID_ATTR  = " + jsLiteral(rowIdAttr) + ";"
     out << '  var ROW_TICK_COL = ' + rowTickCol + ';'
     out << '  var HAS_ROW_NAV  = ' + (hasRowNav ? 'true' : 'false') + ';'
+    out << '  var ROW_AJAX     = ' + (rowAjax ? 'true' : 'false') + ';'
+    out << '  var ROW_REMOVE   = ' + (rowRemove ? 'true' : 'false') + ';'
+    out << '  var REMOVE_DELAY = ' + removeDelay + ';'
+    out << '  var STATUS_KIND  = ' + jsLiteral(STATUS_KIND) + ';'
+    out << '  var STATUS_MSG   = ' + jsLiteral(STATUS_MESSAGE) + ';'
+    out << '  var HEADER_URL    = ' + jsLiteral(headerUrl) + ';'
+    out << '  var HEADER_METHOD = ' + jsLiteral(headerMethod) + ';'
+    out << '  var HEADER_LOAD   = ' + (headerLoad ? 'true' : 'false') + ';'
+    out << '  var DATA_FIELDS   = ' + jsLiteral(dataFields) + ';'
+    out << '  var DATA_ID_FIELD = ' + jsLiteral(dataIdField) + ';'
+    out << '  var DATA_BADGE    = ' + jsLiteral(dataBadgeHtml) + ';'
+    out << '  var HEADER_DATA   = ' + headerDataJson + ';'
 
     out << '''
+    function notify(kind, message) {
+      if (typeof window.glassAlert === 'function') {
+        window.glassAlert(message, kind, kind === 'success' ? 3500 : 6000);
+      }
+    }
+
+    function pickMessage(json, status) {
+      if (json && typeof json === 'object') {
+        if (typeof json.message === 'string' && json.message) return json.message;
+        if (typeof json.error === 'string' && json.error) return json.error;
+        if (Array.isArray(json.errors) && json.errors.length) {
+          var parts = json.errors.map(function (e) {
+            return typeof e === 'string' ? e : ((e && e.message) || '');
+          }).filter(Boolean);
+          if (parts.length) return parts.join(', ');
+        }
+      }
+      if (STATUS_MSG[status]) return STATUS_MSG[status];
+      return status === 0 ? 'Network error. Please try again.' : 'Unexpected response (HTTP ' + status + ').';
+    }
+
+    // Removes a row (animated), refreshes the footer and fires the table events.
+    function removeRow(row, rowId, json) {
+      var done = false;
+      function finish() {
+        if (done) return;
+        done = true;
+        row.remove();
+        updateState();
+        tbl.dispatchEvent(new CustomEvent('gt:rowRemoved', { detail: { id: rowId, response: json } }));
+        if (tbl.querySelectorAll('tbody tr').length === 0) {
+          tbl.dispatchEvent(new CustomEvent('gt:empty', { detail: {} }));
+        }
+      }
+      row.addEventListener('animationend', function (e) { if (e.target === row) finish(); });
+      row.classList.add('gt-row-removing');
+      setTimeout(finish, 600);   // safety net (reduced-motion, hidden tab, ...)
+    }
+
+    function handleResult(row, rowId, status, json) {
+      var kind = STATUS_KIND[status] || 'error';
+      var message = pickMessage(json, status);
+      row.classList.remove('gt-row-busy');
+      drawIcon(row, ROW_TICK_COL, kind);
+      notify(kind, message);
+
+      if (kind === 'success') {
+        // row stays locked (_gtBusy) until it is gone
+        if (ROW_REMOVE) {
+          setTimeout(function () { removeRow(row, rowId, json); }, REMOVE_DELAY);
+        } else {
+          row._gtBusy = false;
+        }
+      } else {
+        setTimeout(function () { restoreRow(row); row._gtBusy = false; }, 2600);
+      }
+    }
+
+    // AJAX row click: JSON request ({id, ...rowBody}), JSON response.
+    function submitRow(row, rowId) {
+      if (row._gtBusy) return;
+      row._gtBusy = true;
+      row.classList.add('gt-row-busy');
+
+      var url  = ROW_URL;
+      var opts = { method: ROW_METHOD, credentials: 'same-origin', headers: { 'Accept': 'application/json' } };
+      if (ROW_METHOD === 'GET') {
+        url += (url.indexOf('?') < 0 ? '?' : '&') + 'id=' + encodeURIComponent(rowId);
+      } else {
+        var payload = {};
+        Object.keys(ROW_BODY).forEach(function (k) { payload[k] = ROW_BODY[k]; });
+        payload.id = rowId;
+        opts.headers['Content-Type'] = 'application/json';
+        opts.body = JSON.stringify(payload);
+      }
+
+      fetch(url, opts)
+        .then(function (r) {
+          return r.text().then(function (t) {
+            var j = {};
+            try { j = t ? JSON.parse(t) : {}; } catch (ignore) { j = {}; }
+            return { status: r.status, json: j };
+          });
+        })
+        .catch(function () { return { status: 0, json: {} }; })
+        .then(function (res) { handleResult(row, rowId, res.status, res.json); });
+    }
+
     function bindRowClick(row) {
-      if (!HAS_ROW_NAV) return;
+      if (!HAS_ROW_NAV || row._gtBound) return;
+      row._gtBound = true;
       row.classList.add('gt-row-clickable');
       row.addEventListener('click', function (e) {
         if (e.target.closest('.gt-action-btn, .gt-actions, a, button')) return;
         var rowId = row.getAttribute(ROW_ID_ATTR);
         if (!rowId) return;
-        drawTick(row, ROW_TICK_COL);
-        setTimeout(function () {
-          window.location.href = ROW_BASE_URL + encodeURIComponent(rowId);
-        }, 300);
+        if (ROW_AJAX) {
+          submitRow(row, rowId);
+        } else {
+          drawTick(row, ROW_TICK_COL);
+          setTimeout(function () {
+            window.location.href = ROW_NAV_BASE + encodeURIComponent(rowId);
+          }, 300);
+        }
       });
     }
 
+    // Binds every row already in the body: `data` rows and hand-written rows alike.
     tbl.querySelectorAll('tbody tr').forEach(function (r, i) {
       r.style.animationDelay = (i * 45) + 'ms';
       bindRowClick(r);
     });
 
-    // Hooks used by subclasses (ListTableTagLib).
+    // ── Header-driven loading (headerController / headerAction / headerParams) ──
+    var HEADER_ROW = tbl.closest('.gt-wrapper') ? tbl.closest('.gt-wrapper').querySelector('.gt-header-row') : null;
+    var SCROLL_EL  = tbl.closest('.gt-scroll');
+    var headerSeq  = 0;
+    var headerTimer = null;
+    var clickValues = {};     // values set by clicked data-gt-param/data-gt-value elements
+
+    // Named controls inside the header row -> { name: value }
+    function collectHeaderValues() {
+      var vals = {};
+      if (!HEADER_ROW) return vals;
+      HEADER_ROW.querySelectorAll('[name], [data-gt-param]').forEach(function (el) {
+        var name = el.getAttribute('data-gt-param') || el.name;
+        var type = (el.type || '').toLowerCase();
+        if (!name || el.disabled || type === 'button' || type === 'submit' || type === 'reset') return;
+        if (type === 'checkbox') {
+          vals[name] = el.checked;
+        } else if (type === 'radio') {
+          if (el.checked) vals[name] = el.value;
+        } else if (el.tagName === 'SELECT' && el.multiple) {
+          vals[name] = Array.from(el.selectedOptions).map(function (o) { return o.value; });
+        } else if ('value' in el && !el.hasAttribute('data-gt-value')) {
+          vals[name] = el.value;
+        }
+      });
+      Object.keys(clickValues).forEach(function (k) { vals[k] = clickValues[k]; });
+      return vals;
+    }
+
+    // ── headerData binding: data-gt-bind="key" / data-gt-bind-attr="attr:key" ──
+    function lookupPath(obj, path) {
+      return path.split('.').reduce(function (o, k) { return (o === null || o === undefined) ? undefined : o[k]; }, obj);
+    }
+    function optValue(it) {
+      if (it !== null && typeof it === 'object') return it.value != null ? it.value : (it.id != null ? it.id : '');
+      return it;
+    }
+    function optLabel(it) {
+      if (it !== null && typeof it === 'object') return it.label != null ? it.label : (it.name != null ? it.name : optValue(it));
+      return it;
+    }
+    function bindElement(el, v) {
+      if (v === undefined) return;
+      var tag = el.tagName, type = (el.type || '').toLowerCase();
+      if (tag === 'SELECT') {
+        if (Array.isArray(v)) {
+          var prev = el.value, chosen = null;
+          Array.from(el.options).forEach(function (o) { if (!o.hasAttribute('data-gt-static')) o.remove(); });
+          v.forEach(function (it) {
+            var o = document.createElement('option');
+            o.value = String(optValue(it));
+            o.textContent = String(optLabel(it));
+            if (it !== null && typeof it === 'object' && it.selected) chosen = o.value;
+            el.appendChild(o);
+          });
+          var want = chosen !== null ? chosen : prev;
+          if (Array.from(el.options).some(function (o) { return o.value === want; })) el.value = want;
+        } else {
+          el.value = v === null ? '' : String(v);
+        }
+      } else if (type === 'checkbox') {
+        el.checked = (v === true || v === 'true' || v === 1);
+      } else if (type === 'radio') {
+        el.checked = String(el.value) === String(v);
+      } else if (tag === 'INPUT' || tag === 'TEXTAREA') {
+        el.value = v === null ? '' : String(v);
+      } else if (Array.isArray(v)) {
+        var asList = (tag === 'UL' || tag === 'OL');
+        el.textContent = '';
+        v.forEach(function (it) {
+          var c = document.createElement(asList ? 'li' : 'span');
+          if (!asList) c.className = 'gt-header-chip';
+          c.textContent = String(optLabel(it));
+          el.appendChild(c);
+        });
+      } else if (v !== null && typeof v === 'object') {
+        el.textContent = JSON.stringify(v);
+      } else {
+        el.textContent = v === null ? '' : String(v);
+      }
+    }
+    // Merges `data` into the header data and refreshes every bound element whose key was sent.
+    function applyHeaderData(data) {
+      if (!data || typeof data !== 'object') return;
+      HEADER_DATA = Object.assign({}, HEADER_DATA, data);
+      tbl.gtHeaderData = HEADER_DATA;
+      if (!HEADER_ROW) return;
+      function sent(key) { return Object.prototype.hasOwnProperty.call(data, key.split('.')[0]); }
+      HEADER_ROW.querySelectorAll('[data-gt-bind]').forEach(function (el) {
+        var key = el.getAttribute('data-gt-bind');
+        if (key && sent(key)) bindElement(el, lookupPath(HEADER_DATA, key));
+      });
+      HEADER_ROW.querySelectorAll('[data-gt-bind-attr]').forEach(function (el) {
+        el.getAttribute('data-gt-bind-attr').split(',').forEach(function (pair) {
+          var i = pair.indexOf(':');
+          if (i < 1) return;
+          var attr = pair.slice(0, i).trim(), key = pair.slice(i + 1).trim();
+          if (!attr || !key || !sent(key)) return;
+          var v = lookupPath(HEADER_DATA, key);
+          if (v !== undefined && v !== null) el.setAttribute(attr, String(v));
+        });
+      });
+    }
+
+    function buildDataRow(item) {
+      var tr = document.createElement('tr');
+      tr.setAttribute(ROW_ID_ATTR, item[DATA_ID_FIELD] == null ? '' : item[DATA_ID_FIELD]);
+      DATA_FIELDS.forEach(function (f) {
+        var td = document.createElement('td');
+        td.textContent = item[f] == null ? '' : item[f];
+        tr.appendChild(td);
+      });
+      if (DATA_BADGE) {
+        var tdBadge = document.createElement('td');
+        tdBadge.innerHTML = DATA_BADGE;
+        tr.appendChild(tdBadge);
+      }
+      return tr;
+    }
+
+    // Replaces every body row with the given items.
+    function replaceData(items, params) {
+      var tbody = tbl.querySelector('tbody');
+      tbody.innerHTML = '';
+      items.forEach(function (item, i) {
+        var tr = buildDataRow(item);
+        tr.style.animationDelay = (Math.min(i, 20) * 45) + 'ms';
+        tbody.appendChild(tr);
+        bindRowClick(tr);
+      });
+      applySort();
+      applyFilter();
+      tbl.dispatchEvent(new CustomEvent('gt:dataLoaded', { detail: { items: items, params: params } }));
+    }
+
+    function extractArray(json) {
+      if (Array.isArray(json)) return json;
+      var found = null;
+      if (json && typeof json === 'object') {
+        Object.keys(json).some(function (k) {
+          if (Array.isArray(json[k])) { found = json[k]; return true; }
+        });
+      }
+      return found;
+    }
+
+    function reloadFromHeader(extra) {
+      if (!HEADER_URL) return;
+      if (!DATA_FIELDS.length) {
+        console.error('[glass:table] header loading needs the "fields" attribute to build rows');
+        return;
+      }
+      var params = collectHeaderValues();
+      params.offset = 0;                          // any header interaction restarts paging at 0
+      tbl.dispatchEvent(new CustomEvent('gt:headerReload', { detail: { params: params } }));
+      if (typeof tbl.gtHeaderExtra === 'function') {
+        var more = tbl.gtHeaderExtra() || {};
+        Object.keys(more).forEach(function (k) { params[k] = more[k]; });
+      }
+      if (extra && typeof extra === 'object') {
+        Object.keys(extra).forEach(function (k) { params[k] = extra[k]; });
+      }
+      tbl.gtHeaderState = params;
+
+      var seq = ++headerSeq;
+      var url = HEADER_URL;
+      var opts = { method: HEADER_METHOD, credentials: 'same-origin', headers: { 'Accept': 'application/json' } };
+      if (HEADER_METHOD === 'GET') {
+        var qs = [];
+        Object.keys(params).forEach(function (k) {
+          var v = params[k];
+          if (v == null) return;
+          (Array.isArray(v) ? v : [v]).forEach(function (one) {
+            qs.push(encodeURIComponent(k) + '=' + encodeURIComponent(one));
+          });
+        });
+        if (qs.length) url += (url.indexOf('?') < 0 ? '?' : '&') + qs.join('&');
+      } else {
+        opts.headers['Content-Type'] = 'application/json';
+        opts.body = JSON.stringify(params);
+      }
+
+      tbl.gtLoading = true;
+      if (SCROLL_EL) SCROLL_EL.classList.add('gt-loading');
+      updateState();
+
+      fetch(url, opts)
+        .then(function (r) {
+          return r.text().then(function (t) {
+            var j = null;
+            try { j = t ? JSON.parse(t) : null; } catch (ignore) { j = null; }
+            return { status: r.status, json: j };
+          });
+        })
+        .catch(function () { return { status: 0, json: null }; })
+        .then(function (res) {
+          if (seq !== headerSeq) return;          // a newer request superseded this one
+          var items = res.status >= 200 && res.status < 300 ? extractArray(res.json) : null;
+          if (items) {
+            if (res.json && !Array.isArray(res.json) && res.json.headerData && typeof res.json.headerData === 'object') {
+              applyHeaderData(res.json.headerData);
+            }
+            replaceData(items, params);
+          } else {
+            var kind = STATUS_KIND[res.status] || 'error';
+            notify(kind === 'success' ? 'error' : kind,
+              res.status >= 200 && res.status < 300 ? 'Response is not a JSON array' : pickMessage(res.json, res.status));
+          }
+        })
+        .finally(function () {
+          if (seq !== headerSeq) return;
+          tbl.gtLoading = false;
+          if (SCROLL_EL) SCROLL_EL.classList.remove('gt-loading');
+          updateState();
+        });
+    }
+
+    if (HEADER_URL && HEADER_ROW) {
+      HEADER_ROW.addEventListener('change', function (e) {
+        if (e.target.closest('[data-gt-no-reload]')) return;
+        clearTimeout(headerTimer);
+        reloadFromHeader();
+      });
+      HEADER_ROW.addEventListener('click', function (e) {
+        var el = e.target.closest('[data-gt-param][data-gt-value], [data-gt-reload]');
+        if (!el || !HEADER_ROW.contains(el) || el.closest('[data-gt-no-reload]')) return;
+        var tag = el.tagName;
+        var type = (el.type || '').toLowerCase();
+        // real form controls are handled by the change / input listeners
+        if ((tag === 'INPUT' && type !== 'button' && type !== 'submit') || tag === 'SELECT' || tag === 'TEXTAREA') return;
+        var name = el.getAttribute('data-gt-param');
+        if (name && el.hasAttribute('data-gt-value')) {
+          clickValues[name] = el.getAttribute('data-gt-value');
+          HEADER_ROW.querySelectorAll('[data-gt-param]').forEach(function (o) {
+            if (o.getAttribute('data-gt-param') === name) o.classList.toggle('gt-active', o === el);
+          });
+        }
+        clearTimeout(headerTimer);
+        reloadFromHeader();
+      });
+      HEADER_ROW.addEventListener('input', function (e) {
+        var t = e.target;
+        var type = (t.type || '').toLowerCase();
+        if (t.tagName === 'SELECT' || type === 'checkbox' || type === 'radio' || type === 'range') return;
+        if (t.closest('[data-gt-no-reload]')) return;
+        clearTimeout(headerTimer);
+        headerTimer = setTimeout(function () { reloadFromHeader(); }, 350);
+      });
+    }
+
+    // ── Empty table -> drop the exhausted option from a glass:select in the header ──
+    // Runs when the table has no rows left AND nothing more can be loaded:
+    //   - ListTableTagLib fires gt:noMoreRows after its refill fetch came back empty;
+    //   - a plain glass:table (no loader / gtAppendData) prunes straight from gt:empty.
+    // The selected option is removed, the next real option is selected and a 'change' event is
+    // fired on the select so the page loads the next category. No glass:select in the header
+    // (or a multi-select) -> nothing happens.
+    function pruneEmptyHeaderSelect() {
+      if (!HEADER_ROW || tbl.querySelectorAll('tbody tr').length > 0) return;
+      var sel = HEADER_ROW.querySelector('.gsl-wrapper select.gsl-select:not([multiple])');
+      if (!sel || sel.selectedIndex < 0) return;
+
+      var current = sel.options[sel.selectedIndex];
+      if (!current || current.disabled || current.value === '') return;   // placeholder / noSelection
+      var removed = { value: current.value, label: current.textContent };
+      current.remove();
+
+      var next = Array.prototype.find.call(sel.options, function (o) {
+        return !o.disabled && o.value !== '';
+      });
+      if (next) {
+        sel.value = next.value;                                    // glass:select re-syncs its own state
+        sel.dispatchEvent(new Event('change', { bubbles: true })); // loads the next option's rows
+      } else {
+        sel.disabled = true;                                       // nothing left to pick
+        var w = sel.closest('.gsl-wrapper');
+        if (w) w.classList.add('gsl-disabled');
+      }
+      tbl.dispatchEvent(new CustomEvent('gt:headerOptionRemoved', { detail: removed }));
+    }
+    tbl.gtPruneHeaderSelect = pruneEmptyHeaderSelect;
+    tbl.addEventListener('gt:noMoreRows', pruneEmptyHeaderSelect);
+    tbl.addEventListener('gt:empty', function () {
+      if (!tbl.gtAppendData) pruneEmptyHeaderSelect();   // plain glass:table has no loader
+    });
+
+    // Hooks used by subclasses (ListTableTagLib) and page scripts.
+    tbl.gtReload       = reloadFromHeader;
+    tbl.gtHeaderValues = collectHeaderValues;
+    tbl.gtReplaceData  = function (items) { replaceData(Array.isArray(items) ? items : [], tbl.gtHeaderState || {}); };
+    tbl.gtSetHeaderData = applyHeaderData;
+    applyHeaderData(HEADER_DATA);
     tbl.gtBindRow     = bindRowClick;
     tbl.gtDrawTick    = drawTick;
+    tbl.gtDrawIcon    = drawIcon;
+    tbl.gtRemoveRow   = function (row) { removeRow(row, row.getAttribute(ROW_ID_ATTR), null); };
+    tbl.gtNotify      = notify;
     tbl.gtUpdateState = updateState;
     tbl.gtApplyFilter = applyFilter;
+    tbl.gtApplySort   = applySort;
 
     updateState();
+    // deferred so subclass scripts (ListTableTagLib) can register their hooks first
+    if (HEADER_LOAD) setTimeout(function () { reloadFromHeader(); }, 0);
   })();
   '''
     out << '</script>'

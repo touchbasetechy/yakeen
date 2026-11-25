@@ -1,12 +1,14 @@
 package com.murad.app.matrimony
 
-
 import grails.gorm.transactions.Transactional
 import grails.plugin.springsecurity.annotation.Secured
 import grails.validation.ValidationException
+import groovy.util.logging.Slf4j
+import org.springframework.http.HttpStatus
 
 import java.time.LocalDateTime
 
+@Slf4j
 class HobbyController {
 
   @Secured('ROLE_ADMIN')
@@ -70,8 +72,8 @@ class HobbyController {
       totalCount = Hobby.count()
     }
 
-    response.status = 200
-    respond([success: true, hobbies: hobbies, totalCount: totalCount], formats: ['json'])
+    respond([success: true, hobbies: hobbies, totalCount: totalCount],
+      status: HttpStatus.OK, formats: ['json'])
   }
 
   def editHobby() {
@@ -114,18 +116,138 @@ class HobbyController {
     forward(action: "listHobbiesForEdit")
   }
 
+  // Accepts either
+  //   - fetch/AJAX:  POST  JSON body {"hobbyCategoryId": 3, "offset": 0, "max": 10}  -> JSON response
+  //   - page request: GET  ?categoryId=3&offset=0&max=10                              -> view model (as before)
+  @Secured(['ROLE_USER'])
+  def listHobbiesForCategory() {
+    Map body = (request.JSON instanceof Map) ? (Map) request.JSON : [:]
+
+    int offset = Math.max(toInt(body.offset ?: params.offset, 0), 0)
+    int max = Math.min(Math.max(toInt(body.max ?: params.max, 10), 1), 100)
+    Long categoryId = toLong(body.hobbyCategoryId ?: params.categoryId)
+
+    Person person = request.getAttribute('currentPerson') as Person
+
+    // ───────────── JSON / fetch mode ─────────────
+    if (!person) {
+      respond([success: false, message: 'User not found!'],
+        status: HttpStatus.NOT_FOUND, formats: ['json'])
+      return
+    }
+    if (!categoryId) {
+      respond([success: false, message: 'Hobby category is required'],
+        status: HttpStatus.BAD_REQUEST, formats: ['json'])
+      return
+    }
+    HobbyCategory category = HobbyCategory.get(categoryId)
+    if (!category) {
+      respond([success: false, message: 'Hobby category not found!'],
+        status: HttpStatus.NOT_FOUND, formats: ['json'])
+      return
+    }
+
+    Map result = unassignedHobbies(categoryId, person, offset, max)
+
+    response.status = 200
+
+    respond([
+      success        : true,
+      hobbyCategoryId: categoryId,
+      offset         : offset,
+      max            : max,
+      count          : result.hobbies.size(),
+      totalCount     : result.totalCount,
+      hasMore        : (offset + result.hobbies.size()) < result.totalCount,
+      empty          : result.totalCount == 0,      // nothing left to add in this category
+      hobbies        : result.hobbies.collect { Hobby h ->
+        [id: h.id, name: h.name, description: h.description ?: '']
+      }
+    ], status: HttpStatus.OK, formats: ['json'])
+    return
+  }
+
+/** Active hobbies of a category NOT yet assigned to the person, paged, plus the total count. */
+  private Map unassignedHobbies(Long categoryId, Person person, int offset, int max) {
+    Map args = [catId: categoryId, personId: person?.id ?: -1L]
+
+    String fromWhere = """
+      from Hobby h
+      where h.category.id = :catId
+        and h.active = true
+        and not exists (
+            select 1
+            from Person p
+            join p.hobbies ph
+            where p.id = :personId
+              and ph.id = h.id
+        )
+  """
+
+    List<Hobby> hobbies = Hobby.executeQuery(
+      "select h ${fromWhere} order by h.name asc".toString(),
+      args, [offset: offset, max: max]) as List<Hobby>
+
+    long totalCount = (Hobby.executeQuery("select count(h) ${fromWhere}".toString(), args)[0] ?: 0) as long
+
+    [hobbies: hobbies, totalCount: totalCount]
+  }
+
+  private List<Long> assignedHobbyIds(Long personId) {
+    Hobby.executeQuery('select h.id from Person p join p.hobbies h where p.id = :pid', [pid: personId]) as List<Long>
+  }
+
+  private static int toInt(def v, int dflt) {
+    try {
+      v == null || v == '' ? dflt : (v as String).toInteger()
+    } catch (ignored) {
+      dflt
+    }
+  }
+
+  private static Long toLong(def v) {
+    try {
+      v == null || v == '' ? null : (v as String).toLong()
+    } catch (ignored) {
+      null
+    }
+  }
+
   @Transactional
   def addHobbyToUser() {
-    def hobbyToAdd = Hobby.get(params?.id)
-    request.person.hobbies.add(hobbyToAdd)
+    Person currentPerson = request.getAttribute("currentPerson") as Person
+    Person person = currentPerson ? Person.get(currentPerson.id) : null
+    Hobby hobbyToAdd = Hobby.get(request.JSON?.id as Long)
 
-    def personSaved = request.person.save(flush: true)
-    if (personSaved) {
-      flash.message = "Hobby with name '" + hobbyToAdd?.name + "' added to user '" + personSaved?.firstName + " " + personSaved?.lastName + "'"
-      forward(controller: 'DBoard', action: 'listHobbiesToAdd')
-    } else {
-      flash.error = "Failed adding hobby with name '" + hobbyToAdd?.name + "' to user '" + personSaved?.firstName + " " + personSaved?.lastName + "'"
-      forward(controller: 'DBoard', action: 'listHobbiesToAdd')
+    if (!person) {
+      respond([success: false, message: "User not found!"], status: HttpStatus.NOT_FOUND, formats: ['json'])
+      return
     }
+    if (!hobbyToAdd) {
+      respond([success: false, message: "Hobby not found!"], status: HttpStatus.NOT_FOUND, formats: ['json'])
+      return
+    }
+    if (person.hobbies?.contains(hobbyToAdd)) {
+      respond([success: false, message: "User already has hobby " + hobbyToAdd.name],
+        status: HttpStatus.CONFLICT, formats: ['json'])
+      return
+    }
+
+    person.addToHobbies(hobbyToAdd)   // owner side only; GORM syncs hobbyToAdd.persons
+
+    if (!person.save(flush: true)) {
+      transactionStatus.setRollbackOnly()
+      log.warn "Failed to add hobby: ${person.errors}"
+      respond([success: false, message: "Failed to add hobby " + hobbyToAdd.name + " to user!"],
+        status: HttpStatus.UNPROCESSABLE_ENTITY, formats: ['json'])
+      return
+    }
+
+    respond([
+      success    : true,
+      message    : "Hobby " + hobbyToAdd.name + " added to user!",
+      redirectUrl: createLink(controller: 'DBoard', action: 'listHobbiesToAdd',
+        params: [slot: "${request.getAttribute('currentSlot')}"])
+    ], status: HttpStatus.OK, formats: ['json'])
   }
 }

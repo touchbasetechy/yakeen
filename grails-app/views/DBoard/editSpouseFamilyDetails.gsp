@@ -141,8 +141,9 @@
     </section>
 
     <%-- ── Save ──────────────────────────────────────────────────── --%>
-    <div class="d-flex justify-content-end">
-      <glass:cardBtn label="Save" variant="cosmic" faIcon="fas fa-save" type="submit"/>
+    <%-- Full-width Save button on phones, right-aligned from sm up. --%>
+    <div class="d-flex justify-content-center justify-content-sm-end mt-2">
+      <glass:cardBtn label="Save" variant="cosmic" faIcon="fas fa-save" type="submit" class="w-100 w-sm-auto"/>
     </div>
 
   </form>

@@ -123,7 +123,7 @@ class DBoardController {
   @Secured(['ROLE_USER'])
   def editContactDetails() {
     Person person = request.getAttribute('currentPerson')
-    [contactDetails: person?.contactDetails, countries: countryCodeService.getCountryCodes()]
+    [contactDetails: person?.contactDetails, countries: countryCodeService.getAllCountryCodes()]
   }
 
   @Secured(['ROLE_USER'])
@@ -164,12 +164,12 @@ class DBoardController {
 
   @Secured(['ROLE_USER'])
   def addAdditionalSpouseDetails() {
-    [educations: additionalSpouseDetailsService.getEducations(), countries: countryCodeService.getCountryCodes()]
+    [educations: additionalSpouseDetailsService.getEducations(), countries: countryCodeService.getAllCountryCodes(), currencies: countryCodeService.getWorldCurrencies()]
   }
 
   @Secured(['ROLE_USER'])
   def editAdditionalSpouseDetails() {
-    [educations: additionalSpouseDetailsService.getEducations(), countries: countryCodeService.getCountryCodes()]
+    [educations: additionalSpouseDetailsService.getEducations(), countries: countryCodeService.getAllCountryCodes(), currencies: countryCodeService.getWorldCurrencies()]
   }
 
   @Secured(['ROLE_USER'])
@@ -187,27 +187,51 @@ class DBoardController {
     params.max = params?.max ? params.int('max') : 10
 
     Person person = request.getAttribute('currentPerson')
+    List<Long> associatedHobbyIds = person?.hobbies?.collect { it.id } ?: []
 
-    def associatedHobbyIds = person?.hobbies?.collect { it.id } ?: []
-    def hobbies, totalCount
-
-    if (associatedHobbyIds) {
-      hobbies = Hobby.withCriteria {
+    // ids of categories that still have at least one ACTIVE hobby the person has not been assigned
+    List<Long> categoryIds = Hobby.withCriteria {
+      eq('active', true)
+      if (associatedHobbyIds) {
         not { 'in'('id', associatedHobbyIds) }
-        maxResults(params.max)
-        firstResult(params.offset)
       }
-      totalCount = Hobby.withCriteria {
-        not { 'in'('id', associatedHobbyIds) }
-        projections { count('id') }
-      }?.get(0) ?: 0
-    } else {
-      hobbies = Hobby.withCriteria { maxResults(params.max); firstResult(params.offset) }
-      totalCount = Hobby.count()
-    }
+      projections { groupProperty('category.id') }
+    } as List<Long>
 
+    // those categories, in display order (empty list when none qualify)
+    List<HobbyCategory> hobbyCategories = categoryIds ? HobbyCategory.withCriteria {
+      'in'('id', categoryIds)
+      order('displayOrder', 'asc')
+      order('name', 'asc')
+      order('description', 'asc')
+    } as List<HobbyCategory> : []
+
+    // Category to show: an explicit ?categoryId= (only if it is in the list above),
+    // otherwise the first category in the list.
+    Long requestedCategoryId = categoryIds.get(0)
+    HobbyCategory selectedCategory = (requestedCategoryId ? hobbyCategories.find { it.id == requestedCategoryId } : null) ?: hobbyCategories.first()
+
+//    def hobbies = []
+//    long totalCount = 0
+
+//    if (selectedCategory) {
+//      // one query gives both the page of rows and the total (PagedResultList.totalCount)
+//      def page = Hobby.createCriteria().list(max: params.max, offset: params.offset) {
+//        eq('category', selectedCategory)
+//        eq('active', true)
+//        if (associatedHobbyIds) {
+//          not { 'in'('id', associatedHobbyIds) }
+//        }
+//        order('name', 'asc')
+//      }
+//      hobbies = page
+//      totalCount = page.totalCount
+//    }
     response.status = 200
-    [hobbies: hobbies, totalCount: totalCount]
+    [hobbyCategories : hobbyCategories,
+     selectedCategory: selectedCategory]
+//     hobbies         : hobbies,
+//     totalCount      : totalCount]
   }
 
   @Secured('ROLE_USER')
@@ -2152,7 +2176,7 @@ class DBoardController {
 
       if (!person?.contactDetails) {
         transactionStatus.setRollbackOnly()
-        respond([success: false, message: 'Contact details not found.'],
+        respond([success: false, message: 'Contact details not found!'],
           status: 404, formats: ['json'])
         return
       }
@@ -2258,7 +2282,7 @@ class DBoardController {
 
       if (!person?.educationDetails) {
         transactionStatus.setRollbackOnly()
-        respond([success: false, message: 'Education details not found.'],
+        respond([success: false, message: 'Education details not found!'],
           status: 404, formats: ['json'])
         return
       }
@@ -2364,7 +2388,7 @@ class DBoardController {
 
       if (!person?.professionDetails) {
         transactionStatus.setRollbackOnly()
-        respond([success: false, message: 'Profession details not found.'],
+        respond([success: false, message: 'Profession details not found!'],
           status: 404, formats: ['json'])
         return
       }
@@ -2476,7 +2500,7 @@ class DBoardController {
 
       if (!person?.address) {
         transactionStatus.setRollbackOnly()
-        respond([success: false, message: 'Address details not found.'],
+        respond([success: false, message: 'Address details not found!'],
           status: 404, formats: ['json'])
         return
       }

@@ -200,7 +200,7 @@
 
         try {
           var response = await fetch(
-            "${createLink(controller: 'DBoard', action: 'updateAddressDetails')}",
+            "${createLink(controller: 'DBoard', action: 'updateAddressDetails', params: [slot: "${request.getAttribute('currentSlot')}"])}",
             {
               method: "POST",
               headers: {

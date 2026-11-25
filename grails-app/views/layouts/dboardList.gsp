@@ -7,6 +7,7 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
   <script src="https://kit.fontawesome.com/bb4625bf55.js" crossorigin="anonymous"></script>
   <glass:badgeStyles/>
+  <glass:alertRuntime/>
 
   <title>
   <g:layoutTitle default="${grailsApplication.metadata.getApplicationName()}"/>

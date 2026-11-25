@@ -1,4 +1,4 @@
-package com.murad.app.matrimony
+package com.murad.app.matrimony.alert
 
 import grails.gsp.TagLib
 

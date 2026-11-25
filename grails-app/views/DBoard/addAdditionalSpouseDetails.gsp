@@ -2,6 +2,8 @@
 <html>
 <head>
   <meta name="layout" content="dboardAdd"/>
+  <%-- Ensure mobile browsers use the real device width (safe to keep even if the layout already has it) --%>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
 </head>
 
 <body>
@@ -14,24 +16,17 @@
   titleHtml="true"
   subtitle="Tell us more about your spouse">
 
-  <form id="additionalSpouseDetailsForm">
+  <form id="additionalSpouseDetailsForm" novalidate>
 
-    <%-- ── Education ───────────────────────────────────────────────── --%>
-    <section class="row row-padding">
-      <div class="col-sm-6">
-        <glass:select
-          name="education" id="education" label="Education">
-          <option value="Doesn't Matter">Doesn't Matter</option>
-          <g:each in="${educations}" var="education">
-            <option value="${education?.name}">${education?.name}</option>
-          </g:each>
-        </glass:select>
+    <%-- ── Education + Profession ─────────────────────────────────── --%>
+    <section class="row row-padding g-3">
+      <div class="col-12 col-md-6">
+        <glass:select name="education" label="Education"
+                      from="${educations}" optionKey="name" optionValue="name"
+                      value="${details?.education}"/>
       </div>
-    </section>
 
-    <%-- ── Profession ──────────────────────────────────────────────── --%>
-    <section class="row row-padding">
-      <div class="col-sm-6">
+      <div class="col-12 col-md-6">
         <glass:alphaNumericTextField
           name="profession" id="profession" label="Profession"
           maxlength="50" required="true"/>
@@ -39,47 +34,69 @@
     </section>
 
     <%-- ── Salary ──────────────────────────────────────────────────── --%>
-    <section class="row row-padding">
-      <div class="col-sm-6">
-        <glass:positiveNumericField
+    <section class="row row-padding g-3">
+      <div class="col-12 col-md-6">
+        <sheet:currencyPicker
+          id="currency1"
+          currencies="${currencies}"
+          currencyCodeName="currencyCode"
+          currencyName="currencyName"
+          symbolName="currencySymbol"
+          flagName="currencyFlag"
+          selectedCode="INR"
+          selectedCurrency="Indian rupee"
+          selectedSymbol="\u20B9"
+          selectedFlag="in"
+          buttonText="Select Currency"
+          panelTitle="Select Currency"
+          showCurrencyName="true"/>
+      </div>
+
+      <div class="col-12 col-md-6">
+        <glass:formattedNumericField
           name="salary" id="salary" label="Salary"
           maxlength="10" required="true"/>
       </div>
     </section>
 
-    <%-- ── Salary Period ───────────────────────────────────────────── --%>
-    <section class="row row-padding">
-      <glass:radio name="salaryFor" id="perAnum" value="Per Anum" title="Per Anum"/>
-      <glass:radio name="salaryFor" id="perMonth" value="Per Month" title="Per Month"/>
-      <glass:radio name="salaryFor" id="perWeek" value="Per Week" title="Per Week"/>
-      <glass:radio name="salaryFor" id="perDay" value="Per Day" title="Per Day"/>
-      <glass:radio name="salaryFor" id="perHour" value="Per Hour" title="Per Hour"/>
+    <%-- ── Salary Period (wraps onto multiple lines on small screens) ── --%>
+    <section class="row row-padding g-3">
+      <div class="col-12 d-flex flex-wrap gap-3">
+        <glass:radio name="salaryFor" id="perAnum" value="Per Anum" title="Per Anum"/>
+        <glass:radio name="salaryFor" id="perMonth" value="Per Month" title="Per Month"/>
+        <glass:radio name="salaryFor" id="perWeek" value="Per Week" title="Per Week"/>
+        <glass:radio name="salaryFor" id="perDay" value="Per Day" title="Per Day"/>
+        <glass:radio name="salaryFor" id="perHour" value="Per Hour" title="Per Hour"/>
+      </div>
     </section>
 
-    <%-- ── Work Location ──────────────────────────────────────────── --%>
-    <section class="row row-padding">
-      <div class="col-sm-6">
+    <%-- ── Work Location + Working Country ────────────────────────── --%>
+    <section class="row row-padding g-3">
+      <div class="col-12 col-md-6">
         <glass:alphaNumericTextField
-          name="workLocation" id="workLocation" label="Work Location" required="true"/>
+          name="workLocation" id="workLocation" label="Work Location"
+          required="true"/>
+      </div>
+
+      <div class="col-12 col-md-6">
+        <sheet:countryNamePicker
+          id="workingCountry"
+          name="workingCountry"
+          label="Working Country"
+          countries="${countries}"
+          countryName="workingCountry"
+          flagName="workingCountryFlag"
+          selectedCountry="India"
+          selectedFlag="in"
+          buttonText="Select Country"
+          panelTitle="Select Country"
+          style="max-width:320px"/>
       </div>
     </section>
 
-    <%-- ── Working Country ────────────────────────────────────────── --%>
-    <section class="row row-padding">
-      <div class="col-sm-6">
-        <glass:select
-          name="workingCountry" id="workingCountry" label="Working Country">
-          <option value="Doesn't Matter">Doesn't Matter</option>
-          <g:each in="${countries}" var="country">
-            <option value="${country?.name}">${country?.name}</option>
-          </g:each>
-        </glass:select>
-      </div>
-    </section>
-
-    <%-- ── Save ───────────────────────────────────────────────────── --%>
+    <%-- ── Save (full width on all screen sizes) ───────────────────── --%>
     <div class="row row-padding">
-      <div class="col-sm-12 d-flex justify-content-end">
+      <div class="col-12 d-grid save-row">
         <glass:cardBtn label="Save" variant="cosmic" faIcon="fas fa-save" type="submit"/>
       </div>
     </div>
@@ -88,38 +105,64 @@
 
 </glass:modernGlassCard>
 
+<style>
+/* Make the Save button fill its row, regardless of how glass:cardBtn renders it */
+.save-row > button,
+.save-row > a,
+.save-row .btn {
+  width: 100%;
+}
+</style>
+
 <script type="text/javascript">
   document.addEventListener("DOMContentLoaded", function () {
-    // ── Async form submission ─────────────────────────────────────────
-    const form = document.getElementById("additionalSpouseDetailsForm");
-    const saveBtn = form.querySelector('button[type="submit"]');
+    var form = document.getElementById("additionalSpouseDetailsForm");
+    var saveBtn = form.querySelector('button[type="submit"]');
+
+    // Safe field reader: never throws if a control is missing, always returns a trimmed string.
+    function val(name) {
+      var el = form.querySelector('[name="' + name + '"]');
+      return el && el.value != null ? String(el.value).trim() : '';
+    }
+
+    // Working country: the picker writes its hidden input under countryName="workingCountry".
+    // Fallback to the first hidden input inside the picker wrapper in case the tag names it differently.
+    function workingCountry() {
+      var v = val('workingCountry');
+      if (v) return v;
+      var h = form.querySelector('#workingCountry input[type="hidden"]');
+      return h && h.value ? String(h.value).trim() : '';
+    }
 
     form.addEventListener('submit', async function (e) {
       e.preventDefault(); // stops native submission for both click AND Enter-key triggers
 
-      // your AJAX call here
       if (!form.checkValidity()) {
         form.reportValidity();
         return;
       }
 
-      // ── Build JSON payload ────────────────────────────────────────
-      const salaryForEl = form.querySelector('[name="salaryFor"]:checked');
-      const payload = {
-        education: form.querySelector('[name="education"]').value.trim(),
-        profession: form.querySelector('[name="profession"]').value.trim(),
-        salary: form.querySelector('[name="salary"]').value.trim(),
+      // ── Build JSON payload (keys match the AdditionalSpouseDetails properties) ──
+      var salaryForEl = form.querySelector('[name="salaryFor"]:checked');
+      var payload = {
+        education: val('education'),
+        profession: val('profession'),
+        currencyCode: val('currencyCode'),
+        currencyName: val('currencyName'),
+        currencySymbol: val('currencySymbol'),
+        currencyFlag: val('currencyFlag'),
+        salary: val('salary').replace(/[,\s]/g, ''),   // formatted "1,00,000" -> "100000"
         salaryFor: salaryForEl ? salaryForEl.value : '',
-        workLocation: form.querySelector('[name="workLocation"]').value.trim(),
-        workingCountry: form.querySelector('[name="workingCountry"]').value.trim()
+        workLocation: val('workLocation'),
+        workingCountry: workingCountry()
       };
 
       saveBtn.disabled = true;
-      const originalLabel = saveBtn.innerHTML;
-      saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…';
+      var originalLabel = saveBtn.innerHTML;
+      saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving\u2026';
 
       try {
-        const response = await fetch(
+        var response = await fetch(
           "${createLink(controller: 'DBoard', action: 'saveAdditionalSpouseDetails', params: [slot: "${request.getAttribute('currentSlot')}"])}",
           {
             method: "POST",
@@ -131,12 +174,12 @@
           }
         );
 
-        const data = await response.json();
+        var data = await response.json();
 
         if (response.ok && data.success) {
           window.showSuccess(data.message || "Spouse details saved successfully!");
           if (data.redirectUrl) {
-            setTimeout(() => {
+            setTimeout(function () {
               window.location.href = data.redirectUrl;
             }, 1500);
           }
@@ -154,7 +197,7 @@
 
       } catch (err) {
         console.error("Save failed:", err);
-        window.showError("Network error — please check your connection.");
+        window.showError("Network error \u2014 please check your connection.");
 
       } finally {
         saveBtn.disabled = false;

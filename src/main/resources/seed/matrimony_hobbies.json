@@ -1,0 +1,679 @@
+{
+  "version": "1.0",
+  "categories": [
+    {
+      "id": "creative_arts",
+      "name": "Creative & Arts",
+      "description": "Hobbies centred on making, designing and expressing ideas through visual and handcrafted art.",
+      "hobbies": [
+        {
+          "id": "painting",
+          "name": "Painting",
+          "description": "Creating artwork with colours using watercolours, acrylics, oils or other paints on canvas or paper."
+        },
+        {
+          "id": "drawing_sketching",
+          "name": "Drawing & Sketching",
+          "description": "Making images with pencils, pens, charcoal or ink, from quick sketches to detailed illustrations."
+        },
+        {
+          "id": "photography",
+          "name": "Photography",
+          "description": "Capturing people, places and moments with a camera or phone, focusing on composition and light."
+        },
+        {
+          "id": "calligraphy",
+          "name": "Calligraphy",
+          "description": "The art of beautiful, stylised handwriting using pens, brushes or nibs in scripts like Copperplate or Devanagari."
+        },
+        {
+          "id": "rangoli_kolam",
+          "name": "Rangoli / Kolam",
+          "description": "Drawing traditional decorative floor patterns with rice flour, coloured powders or flower petals, especially at festivals and at home entrances."
+        },
+        {
+          "id": "mehndi_design",
+          "name": "Mehndi Design",
+          "description": "Applying intricate henna patterns on hands and feet for weddings, festivals and celebrations."
+        },
+        {
+          "id": "crafts_diy",
+          "name": "Crafts & DIY",
+          "description": "Making handmade items, décor and gifts from paper, fabric, wood or recycled materials."
+        },
+        {
+          "id": "knitting_crochet",
+          "name": "Knitting & Crochet",
+          "description": "Creating garments, blankets and accessories by looping yarn with needles or a hook."
+        },
+        {
+          "id": "embroidery",
+          "name": "Embroidery",
+          "description": "Decorating fabric with needle and thread using stitches, motifs and traditional styles like zardozi or kantha."
+        },
+        {
+          "id": "pottery",
+          "name": "Pottery",
+          "description": "Shaping clay by hand or on a wheel into pots, bowls and decorative pieces, then firing and glazing them."
+        },
+        {
+          "id": "fashion_designing",
+          "name": "Fashion Designing",
+          "description": "Sketching, styling and sewing clothing and accessories, from concept and fabric choice to the finished outfit."
+        },
+        {
+          "id": "interior_decor",
+          "name": "Interior Decoration",
+          "description": "Planning and styling living spaces through furniture arrangement, colour schemes, lighting and décor."
+        },
+        {
+          "id": "digital_art",
+          "name": "Digital Art",
+          "description": "Creating illustrations, designs and graphics using tablets, software and digital tools."
+        }
+      ]
+    },
+    {
+      "id": "music_dance",
+      "name": "Music & Dance",
+      "description": "Hobbies involving making, performing or enjoying music and movement.",
+      "hobbies": [
+        {
+          "id": "singing",
+          "name": "Singing",
+          "description": "Performing songs solo or in a group, from classical and film music to pop and devotional styles."
+        },
+        {
+          "id": "playing_instruments",
+          "name": "Playing Musical Instruments",
+          "description": "Learning and playing instruments such as guitar, keyboard, violin, veena, tabla or flute."
+        },
+        {
+          "id": "listening_music",
+          "name": "Listening to Music",
+          "description": "Enjoying and exploring songs, albums and genres for relaxation, mood or discovery."
+        },
+        {
+          "id": "classical_dance",
+          "name": "Classical Dance",
+          "description": "Practising traditional Indian dance forms like Bharatanatyam, Kathak, Kuchipudi or Odissi."
+        },
+        {
+          "id": "western_dance",
+          "name": "Western Dance",
+          "description": "Dancing styles such as hip-hop, contemporary, salsa, ballet and freestyle."
+        },
+        {
+          "id": "folk_dance",
+          "name": "Folk Dance",
+          "description": "Performing regional and traditional community dances like Garba, Bhangra, Karakattam or Dandiya."
+        },
+        {
+          "id": "karaoke",
+          "name": "Karaoke",
+          "description": "Singing along to backing tracks with lyrics on screen, usually for fun with friends or family."
+        },
+        {
+          "id": "music_composition",
+          "name": "Music Composition",
+          "description": "Writing and arranging original melodies, songs or tracks, often using instruments or music software."
+        },
+        {
+          "id": "attending_concerts",
+          "name": "Attending Concerts",
+          "description": "Going to live music shows, festivals and performances to experience artists in person."
+        }
+      ]
+    },
+    {
+      "id": "sports_fitness",
+      "name": "Sports & Fitness",
+      "description": "Physical activities, sports and mind games for fitness, competition and recreation.",
+      "hobbies": [
+        {
+          "id": "cricket",
+          "name": "Cricket",
+          "description": "Playing or following the bat-and-ball team sport, from street cricket to organised leagues."
+        },
+        {
+          "id": "football",
+          "name": "Football",
+          "description": "Playing the team sport of kicking a ball into the opposing goal, casually or in clubs and tournaments."
+        },
+        {
+          "id": "badminton",
+          "name": "Badminton",
+          "description": "A fast racquet sport played with a shuttlecock over a net, in singles or doubles."
+        },
+        {
+          "id": "tennis",
+          "name": "Tennis",
+          "description": "A racquet sport played on a court with a felt ball, in singles or doubles."
+        },
+        {
+          "id": "table_tennis",
+          "name": "Table Tennis",
+          "description": "A quick-reflex indoor game played with small paddles and a lightweight ball on a table."
+        },
+        {
+          "id": "basketball",
+          "name": "Basketball",
+          "description": "A team sport where players score by shooting a ball through a raised hoop."
+        },
+        {
+          "id": "volleyball",
+          "name": "Volleyball",
+          "description": "A team sport where two sides hit a ball over a high net, played indoors or on the beach."
+        },
+        {
+          "id": "kabaddi",
+          "name": "Kabaddi",
+          "description": "A traditional contact team sport where a raider tags opponents and returns to their half in a single breath."
+        },
+        {
+          "id": "swimming",
+          "name": "Swimming",
+          "description": "Moving through water using strokes like freestyle, breaststroke and butterfly for fitness or fun."
+        },
+        {
+          "id": "cycling",
+          "name": "Cycling",
+          "description": "Riding a bicycle for fitness, commuting, recreation or long-distance rides."
+        },
+        {
+          "id": "running_jogging",
+          "name": "Running / Jogging",
+          "description": "Running at a steady pace for fitness, stress relief or races such as 5K and marathons."
+        },
+        {
+          "id": "gym_workout",
+          "name": "Gym & Workout",
+          "description": "Strength training, cardio and conditioning exercises to build fitness and muscle."
+        },
+        {
+          "id": "yoga",
+          "name": "Yoga",
+          "description": "A practice combining postures, breathing and mindfulness to improve flexibility, strength and calm."
+        },
+        {
+          "id": "zumba_aerobics",
+          "name": "Zumba / Aerobics",
+          "description": "Music-driven group workouts that combine dance moves and cardio exercise."
+        },
+        {
+          "id": "martial_arts",
+          "name": "Martial Arts",
+          "description": "Disciplines like karate, taekwondo, judo, silambam or kalaripayattu that build technique, fitness and self-defence."
+        },
+        {
+          "id": "skating",
+          "name": "Skating",
+          "description": "Gliding on roller skates, inline skates or skateboards for fun, fitness or tricks."
+        },
+        {
+          "id": "chess",
+          "name": "Chess",
+          "description": "A strategy board game for two players that builds planning, focus and tactical thinking."
+        },
+        {
+          "id": "carrom",
+          "name": "Carrom",
+          "description": "A tabletop game where players flick a striker to pocket discs into the corner holes of a board."
+        },
+        {
+          "id": "golf",
+          "name": "Golf",
+          "description": "A precision sport where players use clubs to hit a ball into a series of holes in as few strokes as possible."
+        }
+      ]
+    },
+    {
+      "id": "outdoor_adventure",
+      "name": "Outdoor & Adventure",
+      "description": "Hobbies that take you outdoors for exploration, nature and adventure.",
+      "hobbies": [
+        {
+          "id": "travelling",
+          "name": "Travelling",
+          "description": "Exploring new places, cultures and experiences, near or far."
+        },
+        {
+          "id": "trekking_hiking",
+          "name": "Trekking / Hiking",
+          "description": "Walking along trails, hills and mountains to enjoy nature and challenge yourself."
+        },
+        {
+          "id": "camping",
+          "name": "Camping",
+          "description": "Spending nights outdoors in tents or camps, usually with campfires, cooking and stargazing."
+        },
+        {
+          "id": "road_trips",
+          "name": "Road Trips",
+          "description": "Long drives with friends or family, stopping at scenic spots and local places along the way."
+        },
+        {
+          "id": "bike_riding",
+          "name": "Bike Riding",
+          "description": "Touring or riding motorcycles for the joy of the journey, solo or with a group."
+        },
+        {
+          "id": "fishing",
+          "name": "Fishing",
+          "description": "Catching fish in rivers, lakes or the sea, a patient and relaxing outdoor pastime."
+        },
+        {
+          "id": "bird_watching",
+          "name": "Bird Watching",
+          "description": "Observing and identifying wild birds in their natural habitats, often with binoculars and field guides."
+        },
+        {
+          "id": "wildlife_safari",
+          "name": "Wildlife Safari",
+          "description": "Visiting national parks and sanctuaries to spot animals in their natural environment."
+        },
+        {
+          "id": "scuba_snorkeling",
+          "name": "Scuba Diving / Snorkeling",
+          "description": "Exploring underwater life and coral reefs with breathing gear or a mask and snorkel."
+        },
+        {
+          "id": "mountaineering",
+          "name": "Mountaineering",
+          "description": "Climbing high peaks using technical skills, endurance and proper equipment."
+        },
+        {
+          "id": "stargazing",
+          "name": "Stargazing",
+          "description": "Observing stars, planets and the night sky with the naked eye or a telescope."
+        },
+        {
+          "id": "beach_outings",
+          "name": "Beach Outings",
+          "description": "Relaxing, walking or playing at the seaside with family and friends."
+        }
+      ]
+    },
+    {
+      "id": "food_cooking",
+      "name": "Food & Cooking",
+      "description": "Hobbies around preparing, tasting and exploring food and drink.",
+      "hobbies": [
+        {
+          "id": "cooking",
+          "name": "Cooking",
+          "description": "Preparing meals at home, from everyday recipes to regional specialities and festive dishes."
+        },
+        {
+          "id": "baking",
+          "name": "Baking",
+          "description": "Making breads, cakes, cookies and pastries in the oven."
+        },
+        {
+          "id": "trying_new_cuisines",
+          "name": "Trying New Cuisines",
+          "description": "Exploring unfamiliar dishes and food traditions from different regions and countries."
+        },
+        {
+          "id": "food_blogging",
+          "name": "Food Blogging",
+          "description": "Sharing recipes, restaurant reviews and food photography through blogs or social media."
+        },
+        {
+          "id": "street_food_exploring",
+          "name": "Street Food Exploring",
+          "description": "Seeking out local street vendors and stalls for authentic, affordable snacks and dishes."
+        },
+        {
+          "id": "tea_coffee_tasting",
+          "name": "Tea / Coffee Tasting",
+          "description": "Sampling and learning about different tea and coffee varieties, origins and brewing methods."
+        },
+        {
+          "id": "home_gardening_kitchen",
+          "name": "Kitchen Gardening",
+          "description": "Growing herbs, vegetables and fruits at home for fresh use in the kitchen."
+        }
+      ]
+    },
+    {
+      "id": "reading_writing",
+      "name": "Reading & Writing",
+      "description": "Hobbies involving books, words, language and communication.",
+      "hobbies": [
+        {
+          "id": "reading_books",
+          "name": "Reading Books",
+          "description": "Enjoying fiction, non-fiction, biographies and other genres in print or digital form."
+        },
+        {
+          "id": "writing",
+          "name": "Writing",
+          "description": "Expressing ideas through stories, essays, scripts or other written work."
+        },
+        {
+          "id": "poetry",
+          "name": "Poetry",
+          "description": "Reading or composing poems that capture emotions, imagery and ideas in verse."
+        },
+        {
+          "id": "blogging",
+          "name": "Blogging",
+          "description": "Publishing articles and personal thoughts online on topics you care about."
+        },
+        {
+          "id": "journaling",
+          "name": "Journaling",
+          "description": "Keeping a regular written record of thoughts, feelings, goals and daily life."
+        },
+        {
+          "id": "learning_languages",
+          "name": "Learning Languages",
+          "description": "Studying new languages to speak, read and understand other cultures."
+        },
+        {
+          "id": "public_speaking",
+          "name": "Public Speaking",
+          "description": "Practising speeches and presentations to communicate confidently before an audience."
+        },
+        {
+          "id": "storytelling",
+          "name": "Storytelling",
+          "description": "Narrating tales, real or imagined, in an engaging way to listeners or children."
+        },
+        {
+          "id": "debate",
+          "name": "Debate",
+          "description": "Presenting and defending arguments on topics in structured, competitive discussions."
+        }
+      ]
+    },
+    {
+      "id": "entertainment",
+      "name": "Entertainment & Media",
+      "description": "Hobbies around watching, performing and creating films, shows and media.",
+      "hobbies": [
+        {
+          "id": "watching_movies",
+          "name": "Watching Movies",
+          "description": "Enjoying films across languages and genres at theatres or at home."
+        },
+        {
+          "id": "web_series_tv",
+          "name": "Web Series / TV Shows",
+          "description": "Following serials, series and shows on television and streaming platforms."
+        },
+        {
+          "id": "theatre_drama",
+          "name": "Theatre & Drama",
+          "description": "Watching or taking part in stage plays and live dramatic performances."
+        },
+        {
+          "id": "acting",
+          "name": "Acting",
+          "description": "Performing characters on stage, screen or in short films."
+        },
+        {
+          "id": "stand_up_comedy",
+          "name": "Stand-up Comedy",
+          "description": "Watching or performing live comedy sets that use humour and storytelling."
+        },
+        {
+          "id": "podcasts",
+          "name": "Listening to Podcasts",
+          "description": "Enjoying audio shows on topics like news, stories, learning, comedy and interviews."
+        },
+        {
+          "id": "anime_cartoons",
+          "name": "Anime / Animation",
+          "description": "Watching or enjoying animated films, series and cartoons from around the world."
+        },
+        {
+          "id": "video_editing",
+          "name": "Video Editing",
+          "description": "Cutting, arranging and polishing video clips with music, effects and titles."
+        },
+        {
+          "id": "vlogging",
+          "name": "Vlogging",
+          "description": "Recording and sharing video diaries about your life, travels or interests."
+        }
+      ]
+    },
+    {
+      "id": "games_leisure",
+      "name": "Games & Leisure",
+      "description": "Games and puzzles for fun, relaxation and mental challenge.",
+      "hobbies": [
+        {
+          "id": "video_gaming",
+          "name": "Video Gaming",
+          "description": "Playing games on consoles, PCs or phones, solo or online with others."
+        },
+        {
+          "id": "board_games",
+          "name": "Board Games",
+          "description": "Playing tabletop games like Monopoly, Scrabble or modern strategy games with friends and family."
+        },
+        {
+          "id": "card_games",
+          "name": "Card Games",
+          "description": "Playing games with a deck of cards such as rummy, bridge, UNO or poker."
+        },
+        {
+          "id": "puzzles",
+          "name": "Puzzles & Sudoku",
+          "description": "Solving jigsaws, crosswords, Sudoku and other brain teasers."
+        },
+        {
+          "id": "quizzing",
+          "name": "Quizzing",
+          "description": "Testing and expanding general knowledge through quizzes and trivia competitions."
+        },
+        {
+          "id": "ludo_snakes_ladders",
+          "name": "Ludo / Snakes & Ladders",
+          "description": "Classic dice-based family board games enjoyed by all ages."
+        },
+        {
+          "id": "escape_rooms",
+          "name": "Escape Rooms",
+          "description": "Teaming up to solve clues and puzzles to escape a themed room within a time limit."
+        }
+      ]
+    },
+    {
+      "id": "tech_learning",
+      "name": "Technology & Learning",
+      "description": "Hobbies for curiosity, skill-building and exploring technology, science and the world.",
+      "hobbies": [
+        {
+          "id": "coding_programming",
+          "name": "Coding / Programming",
+          "description": "Writing code to build apps, websites, games and tools."
+        },
+        {
+          "id": "gadgets_tech",
+          "name": "Exploring Gadgets & Tech",
+          "description": "Keeping up with, trying and comparing the latest devices and technology."
+        },
+        {
+          "id": "robotics_electronics",
+          "name": "Robotics & Electronics",
+          "description": "Building circuits, sensors and robots using kits like Arduino and Raspberry Pi."
+        },
+        {
+          "id": "astronomy",
+          "name": "Astronomy",
+          "description": "Studying planets, stars and space through reading, telescopes and sky observation."
+        },
+        {
+          "id": "history_culture",
+          "name": "History & Culture",
+          "description": "Exploring the past, heritage sites, traditions and how societies evolved."
+        },
+        {
+          "id": "current_affairs",
+          "name": "Current Affairs",
+          "description": "Staying informed about news and developments in politics, economy and the world."
+        },
+        {
+          "id": "investing_stocks",
+          "name": "Investing & Stock Market",
+          "description": "Learning about and managing investments in stocks, mutual funds and other assets."
+        },
+        {
+          "id": "online_courses",
+          "name": "Online Courses / Upskilling",
+          "description": "Learning new skills and subjects through online classes and certifications."
+        },
+        {
+          "id": "photography_editing",
+          "name": "Photo Editing",
+          "description": "Enhancing and retouching photos using apps and software like Lightroom or Photoshop."
+        }
+      ]
+    },
+    {
+      "id": "lifestyle_wellness",
+      "name": "Lifestyle & Wellness",
+      "description": "Hobbies that support relaxation, personal well-being, home and relationships.",
+      "hobbies": [
+        {
+          "id": "meditation",
+          "name": "Meditation",
+          "description": "Practising focused attention and breathing to calm the mind and reduce stress."
+        },
+        {
+          "id": "spirituality",
+          "name": "Spirituality",
+          "description": "Exploring faith, inner growth and philosophy through prayer, reading and reflection."
+        },
+        {
+          "id": "temple_visits",
+          "name": "Temple / Pilgrimage Visits",
+          "description": "Visiting temples and sacred places for worship, peace and cultural experience."
+        },
+        {
+          "id": "gardening",
+          "name": "Gardening",
+          "description": "Growing and caring for flowers, plants and trees at home or in a garden."
+        },
+        {
+          "id": "shopping",
+          "name": "Shopping",
+          "description": "Browsing and buying clothes, accessories and other items as a leisure activity."
+        },
+        {
+          "id": "makeup_grooming",
+          "name": "Makeup & Grooming",
+          "description": "Exploring beauty, skincare and personal styling techniques."
+        },
+        {
+          "id": "home_organizing",
+          "name": "Home Organizing",
+          "description": "Decluttering and arranging living spaces to keep them tidy and functional."
+        },
+        {
+          "id": "spending_family_time",
+          "name": "Spending Time with Family",
+          "description": "Enjoying meals, outings and activities with relatives and loved ones."
+        },
+        {
+          "id": "socializing",
+          "name": "Socializing with Friends",
+          "description": "Meeting friends for conversation, outings and shared fun."
+        },
+        {
+          "id": "spa_self_care",
+          "name": "Spa & Self-care",
+          "description": "Relaxing and recharging through massages, wellness treatments and personal care routines."
+        }
+      ]
+    },
+    {
+      "id": "social_causes",
+      "name": "Social & Community",
+      "description": "Hobbies focused on helping others, community involvement and causes.",
+      "hobbies": [
+        {
+          "id": "volunteering",
+          "name": "Volunteering",
+          "description": "Giving your time and effort to support people or causes without pay."
+        },
+        {
+          "id": "social_service",
+          "name": "Social Service / NGO Work",
+          "description": "Working with or supporting non-profit organisations that serve communities in need."
+        },
+        {
+          "id": "teaching_mentoring",
+          "name": "Teaching & Mentoring",
+          "description": "Sharing knowledge and guiding students, juniors or peers to learn and grow."
+        },
+        {
+          "id": "animal_care",
+          "name": "Animal Care / Pet Lover",
+          "description": "Caring for pets, strays or rescued animals and supporting animal welfare."
+        },
+        {
+          "id": "environmental_causes",
+          "name": "Environmental Causes",
+          "description": "Taking action for nature through tree planting, clean-ups and sustainable living."
+        },
+        {
+          "id": "blood_donation",
+          "name": "Blood Donation Drives",
+          "description": "Donating blood or helping organise camps that save lives."
+        },
+        {
+          "id": "community_events",
+          "name": "Community Events",
+          "description": "Taking part in or organising local gatherings, festivals and neighbourhood activities."
+        }
+      ]
+    },
+    {
+      "id": "collecting_misc",
+      "name": "Collecting & Miscellaneous",
+      "description": "Collecting, tinkering and other unique interests that don't fit elsewhere.",
+      "hobbies": [
+        {
+          "id": "coin_stamp_collecting",
+          "name": "Coin / Stamp Collecting",
+          "description": "Gathering and cataloguing coins, notes or postage stamps for their history and value."
+        },
+        {
+          "id": "antiques",
+          "name": "Collecting Antiques",
+          "description": "Finding and preserving old and rare items such as furniture, artefacts and curios."
+        },
+        {
+          "id": "model_making",
+          "name": "Model Making",
+          "description": "Building miniature replicas of vehicles, buildings or scenes from kits or scratch."
+        },
+        {
+          "id": "magic_tricks",
+          "name": "Magic Tricks",
+          "description": "Learning and performing illusions and sleight-of-hand to entertain others."
+        },
+        {
+          "id": "astrology",
+          "name": "Astrology",
+          "description": "Studying horoscopes and the positions of celestial bodies as a belief system and interest."
+        },
+        {
+          "id": "car_bike_enthusiast",
+          "name": "Car / Bike Enthusiast",
+          "description": "Following, customising and enjoying cars and motorcycles, from engines to design."
+        },
+        {
+          "id": "thrift_flea_markets",
+          "name": "Flea Markets & Thrifting",
+          "description": "Hunting for bargains, vintage finds and unique second-hand items at markets and thrift shops."
+        }
+      ]
+    }
+  ]
+}
